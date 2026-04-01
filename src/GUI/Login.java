@@ -3,6 +3,7 @@ package GUI;
 import globalfuncs.creds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.effect.BoxBlur;
@@ -23,8 +24,8 @@ import javafx.stage.Stage;
 public class Login extends HBox {
 
     public Login(Stage stage) {
-        stage.setWidth(1400);
-        stage.setHeight(900);
+        stage.setWidth(1000);
+        stage.setHeight(800);
         stage.show();
         createLoginPage();
     }
@@ -47,7 +48,7 @@ public class Login extends HBox {
         c3.setEffect(blur);
         c4.setEffect(blur);
 
-        double offset = 150;
+        double offset = 100;
 
         for (Circle c : new Circle[]{c1, c2, c3, c4}) {
             c.centerXProperty().bind(circleLayer.widthProperty().divide(2).add(offset));
@@ -115,7 +116,13 @@ public class Login extends HBox {
                 "-fx-background-color: #262626; -fx-text-fill: white; -fx-font-size: 13px;" +
                         "-fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 40; -fx-cursor: hand;"
         ));
-        connectBtn.setOnAction(e -> enterCreds(urlField.getText(), nameField.getText(), passField.getText()));
+        connectBtn.setOnAction(e -> {
+            enterCreds(urlField.getText(), nameField.getText(), passField.getText());
+            Root root = new Root();
+            Scene newScene = new Scene(root, 1400, 800);
+            Stage stage = (Stage) connectBtn.getScene().getWindow();
+            stage.setScene(newScene);
+        });
 
         HBox btnRow = new HBox(connectBtn);
         btnRow.setAlignment(Pos.CENTER);
