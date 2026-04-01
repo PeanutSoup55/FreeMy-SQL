@@ -1,0 +1,20 @@
+/* Targets the Login container itself */
+.login {
+    -fx-background-color: #f4f4f4;
+    -fx-padding: 20;
+    -fx-spacing: 50; /* Spaces out logoTxt and vbox */
+}
+
+/* Targets all Text nodes inside the Login container */
+.login .text {
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 20px;
+    -fx-fill: #333;
+}
+
+/* Targets the Login Button specifically */
+.login .button {
+    -fx-background-color: #0078d4;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}

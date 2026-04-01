@@ -1,13 +1,19 @@
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+
+import java.util.Objects;
 
 public class Main extends Application {
     @Override
     public void start(Stage stage) {
-        stage.setScene(new Scene(new StackPane(new Label("It Works!")), 300, 200));
+
+        stage.setTitle("FreeMySQL");
+        Login login = new Login(stage);
+        Scene scene = new Scene(login, 800, 500);
+        String cssPath = Objects.requireNonNull(getClass().getResource("assets/style.css")).toExternalForm();
+        scene.getStylesheets().add(cssPath);
+        stage.setScene(scene);
         stage.show();
     }
 
