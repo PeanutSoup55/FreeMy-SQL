@@ -33,7 +33,6 @@ public class Login extends HBox {
 
         // ── LEFT SIDE ──────────────────────────────────────────────────────────
         Pane circleLayer = new Pane();
-        circleLayer.setStyle("-fx-background-color: #0d1f1a;");
         circleLayer.setMinWidth(0);
         circleLayer.setMinHeight(0);
 
@@ -72,8 +71,11 @@ public class Login extends HBox {
         labelHolder.getChildren().add(logoTxt);
 
         Rectangle clip = new Rectangle();
-        clip.widthProperty().bind(circleLayer.widthProperty());
+        clip.widthProperty().bind(circleLayer.widthProperty().add(20));
         clip.heightProperty().bind(circleLayer.heightProperty());
+        clip.setTranslateX(-20);
+        clip.setArcHeight(80);
+        clip.setArcWidth(80);
         circleLayer.setClip(clip);
 
         circleLayer.getChildren().addAll(c1, c2, c3, c4, labelHolder);
@@ -83,7 +85,7 @@ public class Login extends HBox {
         VBox rightSide = new VBox(20);
         rightSide.setAlignment(Pos.CENTER);
         rightSide.setPadding(new Insets(60, 50, 60, 50));
-        rightSide.setStyle("-fx-background-color: white;");
+
         rightSide.setMinWidth(0);
         rightSide.setMinHeight(0);
         HBox.setHgrow(rightSide, Priority.ALWAYS);
