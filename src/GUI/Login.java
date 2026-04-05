@@ -32,7 +32,7 @@ public class Login extends HBox {
 
     public void createLoginPage() {
 
-        // ── LEFT SIDE ──────────────────────────────────────────────────────────
+        //left
         Pane circleLayer = new Pane();
         circleLayer.setMinWidth(0);
         circleLayer.setMinHeight(0);
@@ -55,10 +55,8 @@ public class Login extends HBox {
             c.centerYProperty().bind(circleLayer.heightProperty().divide(2));
         }
 
-        // StackPane to perfectly centre the label — fills the whole panel,
-        // then shifts its own centre by the same offset as the circles
         StackPane labelHolder = new StackPane();
-        labelHolder.setPickOnBounds(false); // don't block mouse events
+        labelHolder.setPickOnBounds(false);
         labelHolder.layoutXProperty().bind(circleLayer.widthProperty().divide(2).add(offset).subtract(150));
         labelHolder.layoutYProperty().bind(circleLayer.heightProperty().divide(2).subtract(50));
         labelHolder.setPrefSize(300, 100);
@@ -82,7 +80,7 @@ public class Login extends HBox {
         circleLayer.getChildren().addAll(c1, c2, c3, c4, labelHolder);
         HBox.setHgrow(circleLayer, Priority.ALWAYS);
 
-        // ── RIGHT SIDE ─────────────────────────────────────────────────────────
+        //right
         VBox rightSide = new VBox(20);
         rightSide.setAlignment(Pos.CENTER);
         rightSide.setPadding(new Insets(60, 50, 60, 50));
@@ -130,7 +128,6 @@ public class Login extends HBox {
 
         rightSide.getChildren().addAll(title, urlGroup, nameGroup, passGroup, btnRow);
 
-        // ── ASSEMBLE ───────────────────────────────────────────────────────────
         this.setMinWidth(0);
         this.setMinHeight(0);
         this.getChildren().addAll(circleLayer, rightSide);
@@ -159,9 +156,12 @@ public class Login extends HBox {
         field.setPromptText("Value");
         field.setMaxWidth(300);
         field.setPrefHeight(40);
-        field.setStyle(
-                "-fx-background-color: white; -fx-border-color: #d1d1d1;" +
-                        "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13px;"
+        field.setStyle("-fx-background-color: white; " +
+                "-fx-border-color: #d1d1d1;" +
+                "-fx-border-radius: 8; " +
+                "-fx-background-radius: 8; " +
+                "-fx-padding: 10 12; " +
+                "-fx-font-size: 13px;"
         );
 
         VBox group = new VBox(5, label, field);
