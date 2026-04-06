@@ -48,9 +48,9 @@ public class Root extends BorderPane {
         imageView.setFitHeight(22);
         imageView.setFitWidth(22);
 
-        HBox hbox = new HBox(imageView, label);
+        HBox hbox = new HBox(20, imageView, label);
         hbox.setAlignment(Pos.CENTER_LEFT);
-        hbox.setPadding(new Insets(20, 30, 20, 30));
+        hbox.setPadding(new Insets(20, 20, 20, 20));
         hbox.setMinWidth(200);
         hbox.setPrefHeight(30);
 
