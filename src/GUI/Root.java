@@ -12,6 +12,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
+import javafx.scene.shape.Rectangle;
 
 import java.awt.*;
 
@@ -25,8 +26,8 @@ public class Root extends BorderPane {
 
     public void createSide(){
         VBox vBox = new VBox();
-        HBox tophbox = new HBox();
-        VBox topInnerHBox = new VBox();
+        HBox tophbox = createTopHBox(creds.getInitials(), creds.getUser(), creds.getUrl());
+
 
         HBox schemas = createMenuItems("./assets/schema.png", "Schemas", true);
         HBox query = createMenuItems("./assets/query.png", "Query", false);
@@ -34,9 +35,24 @@ public class Root extends BorderPane {
         HBox credentials = createMenuItems("./assets/creds.png", "Credentials", false);
         HBox logs = createMenuItems("./assets/logs.png", "Logs", false);
 
-        vBox.getChildren().addAll(schemas, dashboard, query, credentials, logs);
+        vBox.getChildren().addAll(tophbox, schemas, dashboard, query, credentials, logs);
         setLeft(vBox);
 
+    }
+    public HBox createTopHBox(String initials, String user, String url){
+        Text topLabel = new Text(user);
+        Text bottomLabel = new Text(url);
+        VBox vBox = new VBox(10, topLabel, bottomLabel);
+        Text initialLabel = new Text(initials);
+        Rectangle rec = new Rectangle(30, 30);
+        rec.setArcWidth(10);
+        rec.setArcHeight(10);
+        rec.setFill(Color.DARKGREEN);
+
+        StackPane stack = new StackPane(rec, initialLabel);
+        HBox hbox = new HBox(20, stack, vBox);
+
+        return hbox;
     }
     public HBox createMenuItems(String icon, String labelText, boolean isSelected){
         Text label = new Text(labelText);
