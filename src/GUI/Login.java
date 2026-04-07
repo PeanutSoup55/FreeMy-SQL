@@ -99,6 +99,8 @@ public class Login extends HBox {
         TextField nameField = (TextField) nameGroup.getChildren().get(1);
         VBox passGroup = createFieldGroup("MySQL Password");
         TextField passField = (TextField) passGroup.getChildren().get(1);
+        VBox initialsGroup = createFieldGroup("User Initials");
+        TextField initialsField = (TextField) initialsGroup.getChildren().get(1);
 
         Button connectBtn = new Button("Connect");
         connectBtn.setPrefWidth(160);
@@ -115,9 +117,9 @@ public class Login extends HBox {
                         "-fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 40; -fx-cursor: hand;"
         ));
         connectBtn.setOnAction(e -> {
-            enterCreds(urlField.getText(), nameField.getText(), passField.getText());
+            enterCreds(urlField.getText(), nameField.getText(), passField.getText(), initialsField.getText());
             Root root = new Root();
-            Scene newScene = new Scene(root, 1400, 800);
+            Scene newScene = new Scene(root, 1400, 800, Color.web("#F9F9F9"));
             Stage stage = (Stage) connectBtn.getScene().getWindow();
             stage.setScene(newScene);
         });
@@ -126,7 +128,7 @@ public class Login extends HBox {
         btnRow.setAlignment(Pos.CENTER);
         btnRow.setMaxWidth(300);
 
-        rightSide.getChildren().addAll(title, urlGroup, nameGroup, passGroup, btnRow);
+        rightSide.getChildren().addAll(title, urlGroup, nameGroup, passGroup, initialsGroup, btnRow);
 
         this.setMinWidth(0);
         this.setMinHeight(0);
@@ -140,10 +142,11 @@ public class Login extends HBox {
             rightSide.setMaxWidth(half);
         });
     }
-    private void enterCreds(String url, String user, String password){
+    private void enterCreds(String url, String user, String password, String initials){
         creds.user = user;
         creds.pass = password;
         creds.url = url;
+        creds.initials = initials;
         creds.Display();
     }
 

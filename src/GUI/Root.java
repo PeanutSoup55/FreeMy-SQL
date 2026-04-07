@@ -26,8 +26,11 @@ public class Root extends BorderPane {
 
     public void createSide(){
         VBox vBox = new VBox();
+        vBox.setStyle("-fx-background-radius: 15;" +
+                "-fx-background-color: #FFFFFF;" +
+                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
+        BorderPane.setMargin(vBox, new Insets(10));
         HBox tophbox = createTopHBox(creds.getInitials(), creds.getUser(), creds.getUrl());
-
 
         HBox schemas = createMenuItems("./assets/schema.png", "Schemas", true);
         HBox query = createMenuItems("./assets/query.png", "Query", false);
@@ -41,16 +44,26 @@ public class Root extends BorderPane {
     }
     public HBox createTopHBox(String initials, String user, String url){
         Text topLabel = new Text(user);
+        topLabel.setStyle("-fx-font-weight: bold; -fx-fill: #333;");
+
         Text bottomLabel = new Text(url);
+        bottomLabel.setStyle("-fx-fill: gray; -fx-font-size: 10px;");
+
         VBox vBox = new VBox(10, topLabel, bottomLabel);
+
         Text initialLabel = new Text(initials);
-        Rectangle rec = new Rectangle(30, 30);
+        initialLabel.setStyle("-fx-font-weight: bold; -fx-fill: white;");
+
+        Rectangle rec = new Rectangle(50, 50);
         rec.setArcWidth(10);
         rec.setArcHeight(10);
         rec.setFill(Color.DARKGREEN);
 
         StackPane stack = new StackPane(rec, initialLabel);
+
         HBox hbox = new HBox(20, stack, vBox);
+        hbox.setAlignment(Pos.CENTER_LEFT);
+        hbox.setPadding(new Insets(10));
 
         return hbox;
     }
