@@ -72,7 +72,7 @@ public class Login extends HBox {
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(circleLayer.widthProperty().add(20));
         clip.heightProperty().bind(circleLayer.heightProperty());
-        clip.setTranslateX(-20);
+        clip.setTranslateX(-40);
         clip.setArcHeight(80);
         clip.setArcWidth(80);
         circleLayer.setClip(clip);

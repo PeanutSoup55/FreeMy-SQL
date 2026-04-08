@@ -8,16 +8,20 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.Cursor;
+
 
 import java.awt.*;
 
 public class Root extends BorderPane {
     private HBox selectedTab;
+    private boolean isDark = false;
 
     public Root(){
         createSide();
@@ -39,11 +43,62 @@ public class Root extends BorderPane {
         HBox credentials = createMenuItems("./assets/creds.png", "Credentials", false);
         HBox logs = createMenuItems("./assets/logs.png", "Logs", false);
 
-        vBox.getChildren().addAll(tophbox, searchBox, schemas, dashboard, query, credentials, logs);
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        HBox bot = createBotTab();
+
+        vBox.getChildren().addAll(tophbox, searchBox, schemas, dashboard, query, credentials, logs, spacer, bot);
         setLeft(vBox);
     }
-    public void isSelected(){
+    public HBox createBotTab(){
+        ImageView icon = new ImageView(new Image("./assets/moon.png"));
+        icon.setFitHeight(22);
+        icon.setFitWidth(22);
 
+        Text label = new Text("Dark Mode");
+        label.setFont(Font.font("System", 13));
+        label.setStyle("-fx-font-weight: bold;");
+        label.setFill(Color.web("#4A4A4A"));
+
+        Rectangle track = new Rectangle(35, 18);
+        track.setArcWidth(18); track.setArcHeight(18);
+        track.setFill(Color.web("#BDD7BC"));
+
+        Circle knob = new Circle(7);
+        knob.setFill(Color.WHITE);
+        knob.setTranslateX(-8);
+
+        StackPane switchPane = new StackPane(track, knob);
+        switchPane.setCursor(javafx.scene.Cursor.HAND);
+
+        switchPane.setOnMouseClicked(e -> {
+            isDark = !isDark;
+            if (isDark) {
+                knob.setTranslateX(8);
+                track.setFill(Color.web("#2E5A47"));
+            } else {
+                knob.setTranslateX(-8);
+                track.setFill(Color.web("#BDD7BC"));
+            }
+        });
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox hbox = new HBox(20, icon, label, spacer, switchPane);
+        hbox.setAlignment(Pos.CENTER_LEFT);
+        hbox.setPadding(new Insets(20, 20, 20, 20)); // Matching your padding
+        hbox.setMinWidth(200);
+        hbox.setPrefHeight(30); // Matching your height
+
+        // Background style matching your createSearch method
+        hbox.setBackground(new Background(new BackgroundFill(
+                Color.web("#E9F5E8"), new CornerRadii(8), Insets.EMPTY)));
+
+        VBox.setMargin(hbox, new Insets(5, 10, 5, 10)); // Matching your margins
+
+        return hbox;
     }
     public HBox createSearch(String icon, String search){
         Text label = new Text(search);
@@ -111,7 +166,7 @@ public class Root extends BorderPane {
         HBox hbox = new HBox(20, imageView, label);
         hbox.setAlignment(Pos.CENTER_LEFT);
         hbox.setPadding(new Insets(20, 20, 20, 20));
-        hbox.setMinWidth(200);
+        hbox.setMinWidth(250);
         hbox.setPrefHeight(30);
 
         if (isSelected) {
