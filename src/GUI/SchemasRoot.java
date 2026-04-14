@@ -1,6 +1,7 @@
 package GUI;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
 import globalfuncs.db;
@@ -12,6 +13,7 @@ import javafx.scene.text.TextAlignment;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class SchemasRoot extends BorderPane{
     public static List<String> schemas = db.Schemas();
@@ -92,7 +94,32 @@ public class SchemasRoot extends BorderPane{
 
     public GridPane createTables(){
         GridPane gridPane = new GridPane();
+        gridPane.setHgap(20);
+        gridPane.setVgap(20);
+        gridPane.setPadding(new Insets(20));
+
+        String selectedSchema = schemas.isEmpty() ? "" : schemas.getFirst();
+        Map<String, List<String[]>> tableMap = db.GetTablesInSchema(selectedSchema);
+
+        int col = 0, row = 0;
+        for (Map.Entry<String, List<String[]>> entry : tableMap.entrySet()){
+            VBox card = buildCard(entry.getKey(), entry.getValue());
+            gridPane.add(card, col, row);
+            col++;
+            if (col == 3){
+                col = 0;
+                row++;
+            }
+        }
+
+        ScrollPane scrollPane = new ScrollPane(gridPane);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: transparent;");
+        setCenter(scrollPane);
         return gridPane;
+    }
+    public VBox buildCard(String tableName, List<String[]> columns){
+
     }
 
 }
