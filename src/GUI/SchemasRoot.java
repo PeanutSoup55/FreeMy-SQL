@@ -6,8 +6,8 @@ import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
 import globalfuncs.db;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 
@@ -76,7 +76,7 @@ public class SchemasRoot extends BorderPane{
             }
             applySelectedStyle(hbox, text);
             selectedTab = hbox;
-
+            createTables();
         });
 
         hbox.getChildren().add(text);
@@ -92,70 +92,71 @@ public class SchemasRoot extends BorderPane{
         label.setFill(Color.web("#4A4A4A"));
     }
 
-    public GridPane createTables(){
-        GridPane gridPane = new GridPane();
-        gridPane.setHgap(20);
-        gridPane.setVgap(20);
-        gridPane.setPadding(new Insets(20));
+    public void createTables() {
+        FlowPane flow = new FlowPane();
+        flow.setHgap(40);
+        flow.setVgap(40);
+        flow.setPadding(new Insets(20));
 
-        String selectedSchema = schemas.isEmpty() ? "" : schemas.getFirst();
+        String selectedSchema = selectedTab != null
+                ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                : (schemas.isEmpty() ? "" : schemas.get(0));
+
         Map<String, List<String[]>> tableMap = db.GetTablesInSchema(selectedSchema);
 
-        int col = 0, row = 0;
-        for (Map.Entry<String, List<String[]>> entry : tableMap.entrySet()){
+        for (Map.Entry<String, List<String[]>> entry : tableMap.entrySet()) {
             VBox card = buildCard(entry.getKey(), entry.getValue());
-            gridPane.add(card, col, row);
-            col++;
-            if (col == 3){
-                col = 0;
-                row++;
-            }
+            flow.getChildren().add(card);
         }
 
-        ScrollPane scrollPane = new ScrollPane(gridPane);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: transparent;");
-        setCenter(scrollPane);
-        return gridPane;
+        ScrollPane scroll = new ScrollPane(flow);
+        scroll.setFitToWidth(true);
+        scroll.setFitToHeight(false);
+        scroll.setStyle("-fx-background-color: transparent;");
+        setCenter(scroll);
     }
     public VBox buildCard(String tableName, List<String[]> columns){
         VBox card = new VBox();
-        card.setStyle("-fx-background-color: white;" +
-                "-fx-background-radius: 10;" +
-                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);");
-        card.setMinWidth(180);
+        card.setStyle("-fx-background-radius: 15;" +
+                "-fx-background-color: #FFFFFF;" +
+                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
+        card.setMinWidth(160);
+        card.setPrefWidth(Region.USE_COMPUTED_SIZE);
+        card.setMaxWidth(Region.USE_COMPUTED_SIZE);
 
         HBox header = new HBox();
-        header.setPadding(new Insets(10, 14, 10, 14));
+        header.setPadding(new Insets(8, 12, 8, 12));
         header.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 10 10 0 0;");
         header.setAlignment(Pos.CENTER_LEFT);
 
         Text title = new Text(tableName);
         title.setFill(Color.WHITE);
-        title.setStyle("-fx-font-weight: bold;");
+        title.setFont(Font.font("System", FontWeight.BOLD, 13));
         header.getChildren().add(title);
         card.getChildren().add(header);
 
-        for (String[] col : columns){
+        for (String[] col : columns) {
             String colName = col[0];
             String dataType = col[1];
-            String keyType = col[2];
+            String keyType  = col[2];
 
             String prefix = "";
-            if ("PRI".equals(keyType)) prefix = "PK ";
-            else if ("MUL".equals(keyType)) prefix ="FK ";
-            HBox row = new HBox();
-            row.setPadding(new Insets(6, 14, 6, 14));
-            row.setStyle("-fx-border-color: #E8E8E8; -fx-border-width: 0 0 1 0;");
+            if ("PRI".equals(keyType))      prefix = "PK ";
+            else if ("MUL".equals(keyType)) prefix = "FK ";
+
+            HBox row = new HBox(6);
+            row.setPadding(new Insets(5, 12, 5, 12));
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
 
             Text colText = new Text(prefix + dataType + " " + colName);
-            colText.setStyle(
-                    "PK".equals(prefix.trim()) ? "-fx-font-weight: bold;" :
-                            "FK".equals(prefix.trim()) ? "-fx-fill: #2E5A47;" : ""
-            );
+            colText.setFont(Font.font("System", 12));
+            colText.setFill(Color.web("#333333"));
+
             row.getChildren().add(colText);
             card.getChildren().add(row);
         }
+
         return card;
     }
 
