@@ -17,14 +17,16 @@ public class SchemasRoot extends BorderPane{
         createTables();
     }
 
-    private VBox createSide(){
+    private void createSide(){
         VBox vBox = new VBox();
         List <HBox> schemaTabs = new ArrayList<>();
         for (String schema : schemas){
             schemaTabs.add(generateTab(schema));
+            System.out.println(schema);
         }
         vBox.getChildren().addAll(schemaTabs);
-        return vBox;
+
+        setLeft(vBox);
     }
 
     private HBox generateTab(String schema){
@@ -35,7 +37,8 @@ public class SchemasRoot extends BorderPane{
     }
 
     public GridPane createTables(){
-
+        GridPane gridPane = new GridPane();
+        return gridPane;
     }
 
 }
