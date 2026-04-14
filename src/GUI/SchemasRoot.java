@@ -119,7 +119,44 @@ public class SchemasRoot extends BorderPane{
         return gridPane;
     }
     public VBox buildCard(String tableName, List<String[]> columns){
+        VBox card = new VBox();
+        card.setStyle("-fx-background-color: white;" +
+                "-fx-background-radius: 10;" +
+                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);");
+        card.setMinWidth(180);
 
+        HBox header = new HBox();
+        header.setPadding(new Insets(10, 14, 10, 14));
+        header.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 10 10 0 0;");
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        Text title = new Text(tableName);
+        title.setFill(Color.WHITE);
+        title.setStyle("-fx-font-weight: bold;");
+        header.getChildren().add(title);
+        card.getChildren().add(header);
+
+        for (String[] col : columns){
+            String colName = col[0];
+            String dataType = col[1];
+            String keyType = col[2];
+
+            String prefix = "";
+            if ("PRI".equals(keyType)) prefix = "PK ";
+            else if ("MUL".equals(keyType)) prefix ="FK ";
+            HBox row = new HBox();
+            row.setPadding(new Insets(6, 14, 6, 14));
+            row.setStyle("-fx-border-color: #E8E8E8; -fx-border-width: 0 0 1 0;");
+
+            Text colText = new Text(prefix + dataType + " " + colName);
+            colText.setStyle(
+                    "PK".equals(prefix.trim()) ? "-fx-font-weight: bold;" :
+                            "FK".equals(prefix.trim()) ? "-fx-fill: #2E5A47;" : ""
+            );
+            row.getChildren().add(colText);
+            card.getChildren().add(row);
+        }
+        return card;
     }
 
 }
