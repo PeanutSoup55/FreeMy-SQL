@@ -1,9 +1,11 @@
 package GUI;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Separator;
 import javafx.scene.layout.*;
 import globalfuncs.db;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
@@ -22,15 +24,26 @@ public class SchemasRoot extends BorderPane{
 
     private void createSide(){
         VBox vBox = new VBox();
+        vBox.setPadding(new Insets(10));
         vBox.setStyle("-fx-background-radius: 15;" +
                 "-fx-background-color: #FFFFFF;" +
                 "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
         BorderPane.setMargin(vBox, new Insets(10));
 
+        Text top = new Text("Schemas");
+        top.setStyle("-fx-font-weight: 600;" +
+                "-fx-padding: 10;");
+        top.setTextAlignment(TextAlignment.CENTER);
+
+        Separator sep = new Separator();
+        sep.setPadding(new Insets(5, 0, 5, 0));
+
+
         List <HBox> schemaTabs = new ArrayList<>();
         for (String schema : schemas){
             schemaTabs.add(generateTab(schema));
         }
+        vBox.getChildren().addAll(top, sep);
         vBox.getChildren().addAll(schemaTabs);
 
         setLeft(vBox);
