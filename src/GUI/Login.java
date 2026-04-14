@@ -119,7 +119,7 @@ public class Login extends HBox {
         connectBtn.setOnAction(e -> {
             enterCreds(urlField.getText(), nameField.getText(), passField.getText(), initialsField.getText());
             Root root = new Root();
-            Scene newScene = new Scene(root, 1400, 800, Color.web("#F9F9F9"));
+            Scene newScene = new Scene(root, 1700, 1000, Color.web("#F9F9F9"));
             Stage stage = (Stage) connectBtn.getScene().getWindow();
             stage.setScene(newScene);
         });

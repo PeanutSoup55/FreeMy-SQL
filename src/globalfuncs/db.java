@@ -16,7 +16,6 @@ public class db {
     public static List<String> Schemas(){
         List<String> databases = new ArrayList<>();
         String query = "SHOW DATABASES";
-        System.out.println("ajfnogniwifwpikfn");
 
         try(Connection conn = Connect(); Statement stmt = conn.createStatement(); ResultSet rslt = stmt.executeQuery(query)){
             while (rslt.next()){
