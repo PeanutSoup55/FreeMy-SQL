@@ -13,7 +13,7 @@ public class db {
         return DriverManager.getConnection(URL, USER, PASS);
     }
 
-    public List<String> Schemas(){
+    public static List<String> Schemas(){
         List<String> databases = new ArrayList<>();
         String query = "SHOW DATABASES";
 
