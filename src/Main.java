@@ -11,7 +11,7 @@ public class Main extends Application {
 
         stage.setTitle("FreeMySQL");
         Login login = new Login(stage);
-        Scene scene = new Scene(login, 800, 500);
+        Scene scene = new Scene(login, 1700, 800);
         stage.setScene(scene);
         stage.show();
     }

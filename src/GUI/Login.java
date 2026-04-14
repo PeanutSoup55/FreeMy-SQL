@@ -24,8 +24,8 @@ import javafx.stage.Stage;
 public class Login extends HBox {
 
     public Login(Stage stage) {
-        stage.setWidth(1000);
-        stage.setHeight(800);
+        stage.setWidth(1700);
+        stage.setHeight(1000);
         stage.show();
         createLoginPage();
     }
