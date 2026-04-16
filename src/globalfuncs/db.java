@@ -17,7 +17,7 @@ public class db {
 
     public static List<String> Schemas(){
         List<String> databases = new ArrayList<>();
-        String query = "SHOW DATABASES";
+        String query = "SHOW DATABASES WHERE `Database` NOT IN ('information_schema','mysql','performance_schema','sys')";
 
         try(Connection conn = Connect(); Statement stmt = conn.createStatement(); ResultSet rslt = stmt.executeQuery(query)){
             while (rslt.next()){
