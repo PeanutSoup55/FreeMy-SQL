@@ -76,6 +76,31 @@ public class db {
         return tableMap;
     }
 
+    public static List<String[]> GetForeignKeys(String schemaName) {
+        List<String[]> fks = new ArrayList<>();
+        String query =
+                "SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME " +
+                        "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " +
+                        "WHERE TABLE_SCHEMA = ? AND REFERENCED_TABLE_NAME IS NOT NULL";
+
+        try (Connection conn = Connect();
+             PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, schemaName);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                fks.add(new String[]{
+                        rs.getString("TABLE_NAME"),
+                        rs.getString("COLUMN_NAME"),
+                        rs.getString("REFERENCED_TABLE_NAME"),
+                        rs.getString("REFERENCED_COLUMN_NAME")
+                });
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return fks;
+    }
+
     public static void MakeSchema(String name){
         String query = "CREATE DATABASE IF NOT EXISTS" + name ;
 
