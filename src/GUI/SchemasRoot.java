@@ -3,8 +3,11 @@ import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import globalfuncs.db;
 import javafx.scene.paint.Color;
@@ -93,9 +96,7 @@ public class SchemasRoot extends BorderPane {
         String selectedSchema = selectedTab != null ? ((Text) selectedTab.getChildren().getFirst()).getText() : (schemas.isEmpty() ? "" : schemas.get(0));
 
         Map<String, List<String[]>> tableMap  = db.GetTablesInSchema(selectedSchema);
-        List<String[]>              foreignKeys = db.GetForeignKeys(selectedSchema);
-        System.out.println("FK relationships found: " + foreignKeys.size());
-        foreignKeys.forEach(fk -> System.out.println(fk[0]+"."+fk[1]+" → "+fk[2]+"."+fk[3]));
+        List<String[]> foreignKeys = db.GetForeignKeys(selectedSchema);
         Pane canvas = new Pane();
         canvas.setMinSize(1000, 800);
         Pane overlay = new Pane();
@@ -163,15 +164,22 @@ public class SchemasRoot extends BorderPane {
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
         card.setMaxWidth(Region.USE_COMPUTED_SIZE);
 
-        HBox header = new HBox();
+        Image edit = new Image("./assets/editW.png");
+        ImageView editView = new ImageView(edit);
+        Image delete = new Image("./assets/deleteW.png");
+        ImageView deleteView = new ImageView(delete);
+        HBox imageBox = new HBox(editView, deleteView);
+        imageBox.setAlignment(Pos.CENTER_RIGHT);
+        Label title = new Label(tableName);
+        title.setTextFill(Color.WHITE);
+        title.setFont(Font.font("System", FontWeight.BOLD, 13));
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox header = new HBox(title, spacer, imageBox);
         header.setPadding(new Insets(8, 12, 8, 12));
         header.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
         header.setAlignment(Pos.CENTER_LEFT);
 
-        Text title = new Text(tableName);
-        title.setFill(Color.WHITE);
-        title.setFont(Font.font("System", FontWeight.BOLD, 13));
-        header.getChildren().add(title);
         card.getChildren().add(header);
 
         for (String[] col : columns) {
