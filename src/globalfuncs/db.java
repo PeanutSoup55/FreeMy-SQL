@@ -2,6 +2,8 @@ package globalfuncs;
 
 import java.sql.*;
 import java.util.*;
+import Objects.*;
+
 
 public class db {
     private static final String USER = creds.getUser();
@@ -98,11 +100,26 @@ public class db {
         return fks;
     }
 
-    public static void MakeSchema(String tableName, HashMap<String, HashMap<String, String>> field){
-        String query = "CREATE DATABASE IF NOT EXISTS" + tableName ;
-
+    public static void MakeSchema(Schema schema){
         try(Connection conn = Connect(); Statement stmt = conn.createStatement()){
-            stmt.executeQuery(query);
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + schema.getName());
+            stmt.executeUpdate("USE " + schema.getName());
+            for (Table table : schema.getTables()){
+                StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS " + table.getName());
+                for (Field field : table.getFields()){
+                    query.append(field.getName()).append(" ").append(field.getType());
+                    if (field.isPrimary()){
+                        query.append(" PRIMARY KEY");
+                    }
+                    if (field.getReference() != null && !field.getReference().isEmpty()){
+                        query.append(" REFERENCES ").append(field.getReference());
+                    }
+                    query.append(", ");
+                }
+                query.setLength(query.length() - 2);
+                query.append(");");
+                stmt.executeUpdate(query.toString());
+            }
         }catch (SQLException e){
             for (StackTraceElement el : e.getStackTrace()){
                 System.err.println(el);
