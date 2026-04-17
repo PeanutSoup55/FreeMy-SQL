@@ -1,10 +1,7 @@
 package globalfuncs;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class db {
     private static final String USER = creds.getUser();
@@ -101,8 +98,8 @@ public class db {
         return fks;
     }
 
-    public static void MakeSchema(String name){
-        String query = "CREATE DATABASE IF NOT EXISTS" + name ;
+    public static void MakeSchema(String tableName, HashMap<String, HashMap<String, String>> field){
+        String query = "CREATE DATABASE IF NOT EXISTS" + tableName ;
 
         try(Connection conn = Connect(); Statement stmt = conn.createStatement()){
             stmt.executeQuery(query);
