@@ -45,8 +45,21 @@ public class SchemasRoot extends BorderPane {
         sep.setPadding(new Insets(5, 0, 5, 0));
         List<HBox> tabs = new ArrayList<>();
         for (String schema : schemas) tabs.add(generateTab(schema));
+
+        Region region = new Region();
+        VBox.setVgrow(region, Priority.ALWAYS);
+        HBox makeSchema = new HBox();
+        makeSchema.setPadding(new Insets(15, 15, 15, 15));
+        makeSchema.setBackground(new Background(new BackgroundFill(Color.web("#2E5A47"), new CornerRadii(8), Insets.EMPTY)));
+        Text makeSchemaLabel = new Text("Make Schema");
+        makeSchemaLabel.setFill(Color.WHITE);
+        makeSchemaLabel.setTextAlignment(TextAlignment.CENTER);
+        makeSchemaLabel.setStyle("-fx-font-weight: 700;");
+        makeSchema.getChildren().add(makeSchemaLabel);
+
         vBox.getChildren().addAll(top, sep);
         vBox.getChildren().addAll(tabs);
+        vBox.getChildren().addAll(region, makeSchema);
         setLeft(vBox);
     }
 
@@ -93,7 +106,7 @@ public class SchemasRoot extends BorderPane {
         rowNodeMap.clear();
         cardNodeMap.clear();
 
-        String selectedSchema = selectedTab != null ? ((Text) selectedTab.getChildren().getFirst()).getText() : (schemas.isEmpty() ? "" : schemas.get(0));
+        String selectedSchema = selectedTab != null ? ((Text) selectedTab.getChildren().getFirst()).getText() : (schemas.isEmpty() ? "" : schemas.getFirst());
 
         Map<String, List<String[]>> tableMap  = db.GetTablesInSchema(selectedSchema);
         List<String[]> foreignKeys = db.GetForeignKeys(selectedSchema);
@@ -324,7 +337,7 @@ public class SchemasRoot extends BorderPane {
                             + Math.min(by - minY, maxY - by);
                     if (pen > maxPenetration) {
                         maxPenetration = pen;
-                        // Push away from the card's vertical centre
+                        // Push away from the card's vertical center
                         pushDir = (by < b.getCenterY()) ? -1.0 : 1.0;
                     }
                 }
