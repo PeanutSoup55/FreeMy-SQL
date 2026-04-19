@@ -16,6 +16,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
+import Objects.*;
 
 import java.util.*;
 
@@ -56,6 +57,7 @@ public class SchemasRoot extends BorderPane {
         makeSchemaLabel.setTextAlignment(TextAlignment.CENTER);
         makeSchemaLabel.setStyle("-fx-font-weight: 700;");
         makeSchema.getChildren().add(makeSchemaLabel);
+        makeSchema.setOnMouseClicked(e -> setCenter(new SchemasAdd(this)));
 
         vBox.getChildren().addAll(top, sep);
         vBox.getChildren().addAll(tabs);
@@ -108,7 +110,7 @@ public class SchemasRoot extends BorderPane {
 
         String selectedSchema = selectedTab != null ? ((Text) selectedTab.getChildren().getFirst()).getText() : (schemas.isEmpty() ? "" : schemas.getFirst());
 
-        Map<String, List<String[]>> tableMap  = db.GetTablesInSchema(selectedSchema);
+        Schema schema = db.GetTablesInSchema(selectedSchema);
         List<String[]> foreignKeys = db.GetForeignKeys(selectedSchema);
         Pane canvas = new Pane();
         canvas.setMinSize(1000, 800);
@@ -126,8 +128,8 @@ public class SchemasRoot extends BorderPane {
         double originX = 30, originY = 30;
         int i = 0;
 
-        for (Map.Entry<String, List<String[]>> entry : tableMap.entrySet()) {
-            VBox card = buildCard(entry.getKey(), entry.getValue());
+        for (Table table : schema.getTables()) {
+            VBox card = buildCard(table);
             card.setLayoutX(originX + (i % perRow) * hGap);
             card.setLayoutY(originY + ((double) i / perRow) * vGap);
             makeDraggable(card, overlay, foreignKeys, stackPane);
@@ -168,7 +170,7 @@ public class SchemasRoot extends BorderPane {
         });
     }
 
-    public VBox buildCard(String tableName, List<String[]> columns) {
+    public VBox buildCard(Table table) {
         VBox card = new VBox();
         card.setStyle("-fx-background-radius: 10;" +
                 "-fx-background-color: #FFFFFF;" +
@@ -176,14 +178,11 @@ public class SchemasRoot extends BorderPane {
         card.setMinWidth(170);
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
         card.setMaxWidth(Region.USE_COMPUTED_SIZE);
-
-        Image edit = new Image("./assets/editW.png");
-        ImageView editView = new ImageView(edit);
+        Image edit   = new Image("./assets/editW.png");
         Image delete = new Image("./assets/deleteW.png");
-        ImageView deleteView = new ImageView(delete);
-        HBox imageBox = new HBox(editView, deleteView);
+        HBox imageBox = new HBox(new ImageView(edit), new ImageView(delete));
         imageBox.setAlignment(Pos.CENTER_RIGHT);
-        Label title = new Label(tableName);
+        Label title = new Label(table.getName());
         title.setTextFill(Color.WHITE);
         title.setFont(Font.font("System", FontWeight.BOLD, 13));
         Region spacer = new Region();
@@ -192,34 +191,27 @@ public class SchemasRoot extends BorderPane {
         header.setPadding(new Insets(8, 12, 8, 12));
         header.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
         header.setAlignment(Pos.CENTER_LEFT);
-
         card.getChildren().add(header);
 
-        for (String[] col : columns) {
-            String colName  = col[0];
-            String dataType = col[1];
-            String keyType  = col[2];
-
-            String prefix = "";
-            if      ("PRI".equals(keyType)) prefix = "PK  ";
-            else if ("MUL".equals(keyType)) prefix = "FK  ";
+        for (Field field : table.getFields()) {
+            boolean isFk = field.getReference() != null && !field.getReference().isEmpty();
+            String prefix = field.isPrimary() ? "PK  " : isFk ? "FK  " : "";
+            Color txtColor = field.isPrimary() ? Color.web("#2E5A47") : isFk ? Color.web("#8B5E3C") : Color.web("#333333");
 
             HBox row = new HBox(6);
-            rowNodeMap.put(tableName + "." + colName, row);
+            rowNodeMap.put(table.getName() + "." + field.getName(), row);
             row.setPadding(new Insets(5, 12, 5, 12));
             row.setAlignment(Pos.CENTER_LEFT);
             row.setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
 
-            Text colText = new Text(prefix + dataType + "  " + colName);
+            Text colText = new Text(prefix + field.getType() + "  " + field.getName());
             colText.setFont(Font.font("Monospace", 11));
-            colText.setFill("PRI".equals(keyType) ? Color.web("#2E5A47")
-                    : "MUL".equals(keyType) ? Color.web("#8B5E3C")
-                    : Color.web("#333333"));
+            colText.setFill(txtColor);
             row.getChildren().add(colText);
             card.getChildren().add(row);
         }
 
-        cardNodeMap.put(tableName, card);
+        cardNodeMap.put(table.getName(), card);
         return card;
     }
 

@@ -30,49 +30,62 @@ public class db {
         return databases;
     }
 
-    public static Map<String, List<String[]>> GetTablesInSchema(String schemaName) {
-        Map<String, List<String[]>> tableMap = new LinkedHashMap<>();
+    public static Schema GetTablesInSchema(String schemaName) {
+        Schema schema = new Schema(schemaName);
 
-        String tablesQuery = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?";
-        String colQuery = "SELECT COLUMN_NAME, DATA_TYPE, COLUMN_KEY " +
-                "FROM INFORMATION_SCHEMA.COLUMNS " +
-                "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? " +
-                "ORDER BY ORDINAL_POSITION";
+        String tablesQuery =
+                "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?";
+
+        // Join KEY_COLUMN_USAGE so FK reference lands on the Field in one pass
+        String colQuery =
+                "SELECT c.COLUMN_NAME, c.DATA_TYPE, c.COLUMN_KEY, " +
+                        "       k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME " +
+                        "FROM INFORMATION_SCHEMA.COLUMNS c " +
+                        "LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k " +
+                        "       ON k.TABLE_SCHEMA = c.TABLE_SCHEMA " +
+                        "      AND k.TABLE_NAME   = c.TABLE_NAME " +
+                        "      AND k.COLUMN_NAME  = c.COLUMN_NAME " +
+                        "      AND k.REFERENCED_TABLE_NAME IS NOT NULL " +
+                        "WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ? " +
+                        "ORDER BY c.ORDINAL_POSITION";
 
         try (Connection conn = Connect();
              PreparedStatement tablePs = conn.prepareStatement(tablesQuery);
-             PreparedStatement colPs = conn.prepareStatement(colQuery)) {
+             PreparedStatement colPs   = conn.prepareStatement(colQuery)) {
 
             tablePs.setString(1, schemaName);
             ResultSet tables = tablePs.executeQuery();
 
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
-                List<String[]> columns = new ArrayList<>();
+                Table table = new Table(tableName);
 
                 colPs.setString(1, schemaName);
                 colPs.setString(2, tableName);
                 ResultSet cols = colPs.executeQuery();
 
                 while (cols.next()) {
-                    columns.add(new String[]{
-                            cols.getString("COLUMN_NAME"),
+                    boolean isPrimary = "PRI".equals(cols.getString("COLUMN_KEY"));
+                    String  refTable  = cols.getString("REFERENCED_TABLE_NAME");
+                    String  refCol    = cols.getString("REFERENCED_COLUMN_NAME");
+                    String  reference = (refTable != null) ? refTable + "(" + refCol + ")" : null;
+
+                    table.addField(new Field(
+                            reference,
+                            isPrimary,
                             cols.getString("DATA_TYPE"),
-                            cols.getString("COLUMN_KEY")
-                    });
+                            cols.getString("COLUMN_NAME")
+                    ));
                 }
                 cols.close();
                 colPs.clearParameters();
-                tableMap.put(tableName, columns);
+                schema.addTable(table);
             }
 
         } catch (SQLException e) {
-            for (StackTraceElement el : e.getStackTrace()) {
-                System.err.println(el);
-            }
+            for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
-
-        return tableMap;
+        return schema;
     }
 
     public static List<String[]> GetForeignKeys(String schemaName) {
