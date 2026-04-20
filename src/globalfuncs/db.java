@@ -113,30 +113,38 @@ public class db {
         return fks;
     }
 
-    public static void MakeSchema(Schema schema){
-        try(Connection conn = Connect(); Statement stmt = conn.createStatement()){
-            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + schema.getName());
-            stmt.executeUpdate("USE " + schema.getName());
-            for (Table table : schema.getTables()){
-                StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS " + table.getName());
-                for (Field field : table.getFields()){
-                    query.append(field.getName()).append(" ").append(field.getType());
-                    if (field.isPrimary()){
-                        query.append(" PRIMARY KEY");
-                    }
-                    if (field.getReference() != null && !field.getReference().isEmpty()){
-                        query.append(" REFERENCES ").append(field.getReference());
-                    }
+    public static void MakeSchema(Schema schema) {
+        try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + schema.getName() + "`");
+            for (Table table : schema.getTables()) {
+                StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `" + schema.getName() + "`.`" + table.getName() + "` (");
+                List<String> fkClauses = new ArrayList<>();
+                for (Field field : table.getFields()) {
+                    query.append("`").append(field.getName()).append("` ")
+                            .append(field.getType());
+                    if (field.isPrimary())
+                        query.append(" PRIMARY KEY AUTO_INCREMENT");
                     query.append(", ");
+
+                    if (field.getReference() != null && !field.getReference().isEmpty()) {
+                        int paren     = field.getReference().indexOf('(');
+                        String refTbl = field.getReference().substring(0, paren);
+                        String refCol = field.getReference().substring(paren + 1, field.getReference().length() - 1);
+                        fkClauses.add("FOREIGN KEY (`" + field.getName() + "`) " + "REFERENCES `" + schema.getName() + "`.`" + refTbl + "`(`" + refCol + "`)"
+                        );
+                    }
                 }
+
+                for (String fk : fkClauses) query.append(fk).append(", ");
                 query.setLength(query.length() - 2);
-                query.append(");");
+                query.append(")");
+                System.out.println("[SQL] " + query);
                 stmt.executeUpdate(query.toString());
             }
-        }catch (SQLException e){
-            for (StackTraceElement el : e.getStackTrace()){
-                System.err.println(el);
-            }
+
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] " + e.getMessage());
+            for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
     }
 }

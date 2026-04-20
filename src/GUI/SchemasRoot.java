@@ -3,6 +3,7 @@ import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
@@ -40,8 +41,20 @@ public class SchemasRoot extends BorderPane {
         BorderPane.setMargin(vBox, new Insets(10));
 
         Text top = new Text("Schemas");
-        top.setStyle("-fx-font-weight: 600; -fx-padding: 10;");
+        top.setStyle("-fx-font-weight: 600;");
         top.setTextAlignment(TextAlignment.CENTER);
+        Button refreshBtn = new Button("↻");
+        refreshBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47;" +
+                "-fx-font-size: 16; -fx-cursor: hand; -fx-padding: 0 4;");
+        refreshBtn.setOnAction(e -> refresh());
+
+        Region topSpacer = new Region();
+        HBox.setHgrow(topSpacer, Priority.ALWAYS);
+
+        HBox topRow = new HBox(top, topSpacer, refreshBtn);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+        topRow.setPadding(new Insets(0, 0, 4, 0));
+
         Separator sep = new Separator();
         sep.setPadding(new Insets(5, 0, 5, 0));
         List<HBox> tabs = new ArrayList<>();
@@ -59,7 +72,7 @@ public class SchemasRoot extends BorderPane {
         makeSchema.getChildren().add(makeSchemaLabel);
         makeSchema.setOnMouseClicked(e -> setCenter(new SchemasAdd(this)));
 
-        vBox.getChildren().addAll(top, sep);
+        vBox.getChildren().addAll(topRow, sep);
         vBox.getChildren().addAll(tabs);
         vBox.getChildren().addAll(region, makeSchema);
         setLeft(vBox);
@@ -365,5 +378,15 @@ public class SchemasRoot extends BorderPane {
                 bx - wx,     by - wy);
         arrow.setFill(Color.web("#2E5A47"));
         return arrow;
+    }
+
+    public void refresh() {
+        schemas = db.Schemas();
+        if (selectedTab != null) {
+            String current = ((Text) selectedTab.getChildren().getFirst()).getText();
+            if (!schemas.contains(current)) selectedTab = null;
+        }
+        createSide();
+        createTables();
     }
 }
