@@ -117,6 +117,8 @@ public class db {
     public static void MakeSchema(Schema schema) {
         try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + schema.getName() + "`");
+            stmt.execute("USE `" + schema.getName() + "`");
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
             for (Table table : schema.getTables()) {
                 StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `" + schema.getName() + "`.`" + table.getName() + "` (");
                 List<String> fkClauses = new ArrayList<>();
@@ -142,6 +144,7 @@ public class db {
                 System.out.println("[SQL] " + query);
                 stmt.executeUpdate(query.toString());
             }
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
 
         } catch (SQLException e) {
             System.err.println("[SQL ERROR] " + e.getMessage());
@@ -157,15 +160,19 @@ public class db {
             for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
     }
-    public static void deleteTable(Schema schema, Table table){
-        String query = "DROP TABLE IF EXISTS " + schema.getName() + "." + table.getName();
-        try(Connection conn = Connect();  Statement stmt = conn.createStatement()){
-            stmt.executeUpdate(query);
-        }catch (SQLException e){
-            System.out.println("SQL error " + e.getMessage());
-            for (StackTraceElement el : e.getStackTrace()){
-                System.err.println(el);
-            }
+    public static void deleteTable(Schema schema, Table table) {
+        String disableChecks = "SET FOREIGN_KEY_CHECKS = 0";
+        String dropTable = String.format("DROP TABLE IF EXISTS `%s`.`%s`", schema.getName(), table.getName());
+        String enableChecks = "SET FOREIGN_KEY_CHECKS = 1";
+
+        try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
+            stmt.execute(disableChecks);
+            stmt.executeUpdate(dropTable);
+            stmt.execute(enableChecks);
+            System.out.println("Successfully dropped: " + table.getName());
+        } catch (SQLException e) {
+            System.err.println("Failed to delete table: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

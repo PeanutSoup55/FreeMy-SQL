@@ -3,6 +3,7 @@ import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -210,7 +211,6 @@ public class SchemasRoot extends BorderPane {
         h.setBackground(null);
         t.setFill(Color.web("#4A4A4A"));
     }
-
     public void createTables() {
         rowNodeMap.clear();
         cardNodeMap.clear();
@@ -254,29 +254,6 @@ public class SchemasRoot extends BorderPane {
                 drawConnectors(overlay, foreignKeys, stackPane)));
     }
 
-    private void makeDraggable(VBox card, Pane overlay, List<String[]> foreignKeys, StackPane stack) {
-        final double[] prev = new double[2]; // last scene position
-
-        card.setOnMousePressed(e -> {
-            prev[0] = e.getSceneX();
-            prev[1] = e.getSceneY();
-            card.toFront();   // raise card inside canvas; overlay stays on top in StackPane
-            e.consume();
-        });
-
-        card.setOnMouseDragged(e -> {
-            // Delta in scene space works correctly for plain translation transforms
-            double dx = e.getSceneX() - prev[0];
-            double dy = e.getSceneY() - prev[1];
-            card.setLayoutX(Math.max(0, card.getLayoutX() + dx));
-            card.setLayoutY(Math.max(0, card.getLayoutY() + dy));
-            prev[0] = e.getSceneX();
-            prev[1] = e.getSceneY();
-            drawConnectors(overlay, foreignKeys, stack);
-            e.consume();
-        });
-    }
-
     public VBox buildCard(Table table) {
         VBox card = new VBox();
         card.setStyle("-fx-background-radius: 10;" +
@@ -285,15 +262,77 @@ public class SchemasRoot extends BorderPane {
         card.setMinWidth(170);
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
         card.setMaxWidth(Region.USE_COMPUTED_SIZE);
-        ImageView edit = new ImageView("./assets/editW.png");
-        ImageView delete = new ImageView("./assets/deleteW.png");
-        edit.setOnMouseClicked(e ->{
-            setCenter(new SchemasEdit());
-        });
-        delete.setOnMouseClicked(e -> {
+        ImageView edit = new ImageView(new Image("./assets/editW.png"));
+        ImageView delete = new ImageView(new Image("./assets/deleteW.png"));
+        StackPane editWrapper = new StackPane(edit);
+        StackPane deleteWrapper = new StackPane(delete);
 
+        editWrapper.setPrefSize(30, 30);
+        deleteWrapper.setPrefSize(30, 30);
+
+        editWrapper.setCursor(Cursor.HAND);
+        deleteWrapper.setCursor(Cursor.HAND);
+        editWrapper.setOnMouseClicked(e ->{
+            setCenter(new TableEdit());
         });
-        HBox imageBox = new HBox(edit, new delete);
+        deleteWrapper.setOnMouseClicked(e -> {
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setTitle("Delete Table");
+            dialog.setHeaderText(null);
+
+            ButtonType deleteButtonType = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(deleteButtonType, ButtonType.CANCEL);
+
+            Label header = new Label("Delete Table");
+            header.setTextFill(Color.WHITE);
+            header.setFont(Font.font("System", FontWeight.BOLD, 14));
+
+            HBox headerBox = new HBox(header);
+            headerBox.setPadding(new Insets(10, 12, 10, 12));
+            headerBox.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
+
+            Label warning = new Label("This will permanently delete the table and all its data.");
+            warning.setStyle("-fx-text-fill: #444;");
+
+            Label instruction = new Label("Type '" + table.getName() + "' to confirm:");
+            instruction.setStyle("-fx-font-weight: 600;");
+
+            TextField input = new TextField();
+            input.setPromptText(table.getName());
+            input.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-color: #CCCCCC; -fx-padding: 6;");
+
+            VBox content = new VBox(10, warning, instruction, input);
+            content.setPadding(new Insets(12));
+            VBox wrapper = new VBox(headerBox, content);
+            wrapper.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
+            dialog.getDialogPane().setContent(wrapper);
+
+            Node deleteButton = dialog.getDialogPane().lookupButton(deleteButtonType);
+            Node cancelButton = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+            deleteButton.setDisable(true);
+            deleteButton.setStyle("-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
+            cancelButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47; -fx-font-weight: 600;");
+
+            input.textProperty().addListener((obs, oldVal, newVal) -> {
+                boolean valid = newVal.equals(table.getName());
+                deleteButton.setDisable(!valid);
+                deleteButton.setStyle(valid
+                        ? "-fx-background-color: #c0392b; -fx-text-fill: white; -fx-background-radius: 6; -fx-cursor: hand;"
+                        : "-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
+            });
+
+            Optional<ButtonType> result = dialog.showAndWait();
+            if (result.isPresent() && result.get() == deleteButtonType) {
+                String selectedSchemaName = selectedTab != null
+                        ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                        : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
+
+                db.deleteTable(new Schema(selectedSchemaName), table);
+                createTables();
+                System.out.println("Table " + table.getName() + " deleted successfully.");
+            }
+        });
+        HBox imageBox = new HBox(editWrapper, deleteWrapper);
         imageBox.setAlignment(Pos.CENTER_RIGHT);
         Label title = new Label(table.getName());
         title.setTextFill(Color.WHITE);
@@ -326,6 +365,29 @@ public class SchemasRoot extends BorderPane {
 
         cardNodeMap.put(table.getName(), card);
         return card;
+    }
+
+    private void makeDraggable(VBox card, Pane overlay, List<String[]> foreignKeys, StackPane stack) {
+        final double[] prev = new double[2];
+
+        card.setOnMousePressed(e -> {
+            prev[0] = e.getSceneX();
+            prev[1] = e.getSceneY();
+            card.toFront();
+            e.consume();
+        });
+
+        card.setOnMouseDragged(e -> {
+            double dx = e.getSceneX() - prev[0];
+            double dy = e.getSceneY() - prev[1];
+            card.setCursor(Cursor.CLOSED_HAND);
+            card.setLayoutX(Math.max(0, card.getLayoutX() + dx));
+            card.setLayoutY(Math.max(0, card.getLayoutY() + dy));
+            prev[0] = e.getSceneX();
+            prev[1] = e.getSceneY();
+            drawConnectors(overlay, foreignKeys, stack);
+            e.consume();
+        });
     }
 
     private void drawConnectors(Pane overlay, List<String[]> foreignKeys, StackPane stack) {

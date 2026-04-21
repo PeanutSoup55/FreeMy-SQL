@@ -59,7 +59,6 @@ public class SchemasAdd extends VBox {
         schemaNameField.setPromptText("Schema Name...");
         schemaNameField.setMaxWidth(380);
         schemaNameField.setStyle(fieldStyle());
-
         tablesContainer = new VBox(16);
         tablesContainer.setPadding(new Insets(0, 0, 4, 0));
 
