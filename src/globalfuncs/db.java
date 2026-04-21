@@ -166,13 +166,6 @@ public class db {
             System.err.println("[SQL ERROR] " + e.getMessage());
         }
     }
-    public static void DisableLogging() {
-        try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
-            stmt.executeUpdate("SET GLOBAL general_log = 'OFF'");
-        } catch (SQLException e) {
-            System.err.println("[SQL ERROR] " + e.getMessage());
-        }
-    }
 
     public static List<String[]> GetLogs(int limit, String filterType) {
         List<String[]> rows = new ArrayList<>();
