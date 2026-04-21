@@ -3,12 +3,11 @@ import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Separator;
+import javafx.scene.Node;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import globalfuncs.db;
 import javafx.scene.paint.Color;
@@ -22,7 +21,7 @@ import Objects.*;
 import java.util.*;
 
 public class SchemasRoot extends BorderPane {
-    public static List<String> schemas = db.Schemas();
+    public static List<Schema> schemas = db.Schemas();
     private HBox selectedTab;
     private final Map<String, HBox> rowNodeMap  = new HashMap<>();
     private final Map<String, VBox> cardNodeMap = new HashMap<>();
@@ -58,7 +57,7 @@ public class SchemasRoot extends BorderPane {
         Separator sep = new Separator();
         sep.setPadding(new Insets(5, 0, 5, 0));
         List<HBox> tabs = new ArrayList<>();
-        for (String schema : schemas) tabs.add(generateTab(schema));
+        for (Schema schema : schemas) tabs.add(generateTab(schema));
 
         Region region = new Region();
         VBox.setVgrow(region, Priority.ALWAYS);
@@ -78,16 +77,16 @@ public class SchemasRoot extends BorderPane {
         setLeft(vBox);
     }
 
-    private HBox generateTab(String schema) {
+    private HBox generateTab(Schema schema) {
         HBox hbox = new HBox();
         hbox.setAlignment(Pos.CENTER);
         hbox.setPadding(new Insets(10));
         hbox.setMinWidth(100);
         hbox.setPrefHeight(15);
 
-        Text text = new Text(schema);
+        Text text = new Text(schema.getName());
         text.setFont(Font.font("System", 13));
-        text.setTextAlignment(TextAlignment.CENTER);
+        text.setTextAlignment(TextAlignment.LEFT);
         text.setStyle("-fx-font-weight: bold;");
 
         if (selectedTab == null) {
@@ -97,11 +96,106 @@ public class SchemasRoot extends BorderPane {
             applyDefaultStyle(hbox, text);
         }
         hbox.setOnMouseClicked(e -> {
-            if (selectedTab != null) applyDefaultStyle(selectedTab,
-                    (Text) selectedTab.getChildren().getFirst());
-            applySelectedStyle(hbox, text);
-            selectedTab = hbox;
-            createTables();
+            if (e.getButton() == MouseButton.PRIMARY){
+                if (selectedTab != null) applyDefaultStyle(selectedTab, (Text) selectedTab.getChildren().getFirst());
+                applySelectedStyle(hbox, text);
+                selectedTab = hbox;
+                createTables();
+            }else if (e.getButton() == MouseButton.SECONDARY){
+                ContextMenu contextMenu = new ContextMenu();
+                contextMenu.setStyle("-fx-background-color: white;" +
+                                "-fx-background-radius: 8;" +
+                                "-fx-border-radius: 8;" +
+                                "-fx-border-color: #E0E0E0;" +
+                                "-fx-padding: 4;" +
+                                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 2);"
+                );
+                MenuItem deleteItem = new MenuItem("Delete " + schema.getName());
+                deleteItem.setOnAction(event -> {
+                    Dialog<ButtonType> dialog = new Dialog<>();
+                    dialog.setTitle("Delete Schema");
+
+                    dialog.setHeaderText(null);
+
+                    ButtonType deleteButtonType = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+                    dialog.getDialogPane().getButtonTypes().addAll(deleteButtonType, ButtonType.CANCEL);
+
+                    Label header = new Label("Delete Schema");
+                    header.setTextFill(Color.WHITE);
+                    header.setFont(Font.font("System", FontWeight.BOLD, 14));
+
+                    HBox headerBox = new HBox(header);
+                    headerBox.setPadding(new Insets(10, 12, 10, 12));
+                    headerBox.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
+
+                    Label warning = new Label("This will permanently delete the schema and all its tables.");
+                    warning.setStyle("-fx-text-fill: #444;");
+
+                    Label instruction = new Label("Type '" + schema.getName() + "' to confirm:");
+                    instruction.setStyle("-fx-font-weight: 600;");
+
+                    TextField input = new TextField();
+                    input.setPromptText(schema.getName());
+                    input.setStyle("-fx-background-radius: 6;" +
+                                    "-fx-border-radius: 6;" +
+                                    "-fx-border-color: #CCCCCC;" +
+                                    "-fx-padding: 6;"
+                    );
+
+                    VBox content = new VBox(10, warning, instruction, input);
+                    content.setPadding(new Insets(12));
+                    VBox wrapper = new VBox(headerBox, content);
+                    wrapper.setStyle("-fx-background-color: white;" +
+                                    "-fx-background-radius: 8;" +
+                                    "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);"
+                    );
+                    dialog.getDialogPane().setContent(wrapper);
+
+                    Node deleteButton = dialog.getDialogPane().lookupButton(deleteButtonType);
+                    Node cancelButton = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+                    deleteButton.setDisable(true);
+                    deleteButton.setStyle("-fx-background-color: #CCCCCC;" +
+                                    "-fx-text-fill: white;" +
+                                    "-fx-background-radius: 6;"
+                    );
+
+                    cancelButton.setStyle("-fx-background-color: transparent;" +
+                                    "-fx-text-fill: #2E5A47;" +
+                                    "-fx-font-weight: 600;"
+                    );
+
+                    input.textProperty().addListener((obs, oldVal, newVal) -> {
+                        boolean valid = newVal.equals(schema.getName());
+                        deleteButton.setDisable(!valid);
+                        deleteButton.setStyle(valid ? "-fx-background-color: #c0392b; -fx-text-fill: white; -fx-background-radius: 6;" : "-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
+                    });
+
+                    Optional<ButtonType> result = dialog.showAndWait();
+
+                    if (result.isPresent() && result.get() == deleteButtonType) {
+                        db.deleteSchema(schema);
+                        ((Pane) hbox.getParent()).getChildren().remove(hbox);
+                        refresh();
+                        System.out.println("Schema deleted successfully.");
+                    }
+                });
+                contextMenu.getItems().add(deleteItem);
+                contextMenu.setOnShown(ev -> {
+                    for (MenuItem item : contextMenu.getItems()) {
+                        Node n = item.getGraphic();
+
+                        Node itemNode = contextMenu.getSkin().getNode().lookup(".menu-item");
+
+                        if (itemNode != null) {
+                            itemNode.setStyle("-fx-background-radius: 6;" +
+                                            "-fx-padding: 6 12;" +
+                                            "-fx-text-fill: #333333;"
+                            );
+                        }
+                    }
+                });
+                contextMenu.show(hbox, e.getScreenX(), e.getScreenY());
+            }
         });
         hbox.getChildren().add(text);
         return hbox;
@@ -121,7 +215,7 @@ public class SchemasRoot extends BorderPane {
         rowNodeMap.clear();
         cardNodeMap.clear();
 
-        String selectedSchema = selectedTab != null ? ((Text) selectedTab.getChildren().getFirst()).getText() : (schemas.isEmpty() ? "" : schemas.getFirst());
+        String selectedSchema = selectedTab != null ? ((Text) selectedTab.getChildren().getFirst()).getText() : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
         Schema schema = db.GetTablesInSchema(selectedSchema);
         List<String[]> foreignKeys = db.GetForeignKeys(selectedSchema);

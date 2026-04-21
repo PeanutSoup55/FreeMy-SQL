@@ -14,13 +14,14 @@ public class db {
         return DriverManager.getConnection(URL, USER, PASS);
     }
 
-    public static List<String> Schemas(){
-        List<String> databases = new ArrayList<>();
+    public static List<Schema> Schemas(){
+        List<Schema> databases = new ArrayList<>();
         String query = "SHOW DATABASES WHERE `Database` NOT IN ('information_schema','mysql','performance_schema','sys')";
 
         try(Connection conn = Connect(); Statement stmt = conn.createStatement(); ResultSet rslt = stmt.executeQuery(query)){
             while (rslt.next()){
-                databases.add(rslt.getString(1));
+                String name = rslt.getString(1);
+                databases.add(new Schema(name));
             }
         }catch (SQLException e){
             for (StackTraceElement el : e.getStackTrace()){
@@ -142,6 +143,15 @@ public class db {
                 stmt.executeUpdate(query.toString());
             }
 
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] " + e.getMessage());
+            for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
+        }
+    }
+    public static void deleteSchema(Schema schema){
+        String query = "DROP DATABASE IF EXISTS " + schema.getName();
+        try (Connection conn = Connect(); Statement statement = conn.createStatement()){
+            statement.executeUpdate(query);
         } catch (SQLException e) {
             System.err.println("[SQL ERROR] " + e.getMessage());
             for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
