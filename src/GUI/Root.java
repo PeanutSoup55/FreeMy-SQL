@@ -14,7 +14,6 @@ import javafx.scene.text.Text;
 
 public class Root extends BorderPane {
 
-    private HBox    selectedTab;
     private boolean isDark      = false;
     private boolean isCollapsed = false;
     private String  activeMenu  = "Schemas";
@@ -82,7 +81,7 @@ public class Root extends BorderPane {
         HBox top = createTopHBox(creds.getInitials(), null, null, false);
         vBox.getChildren().add(top);
 
-        vBox.getChildren().add(iconOnlyRow("./assets/search.png"));
+        vBox.getChildren().add(iconOnlyRow());
 
         for (int i = 0; i < LABELS.length; i++) {
             HBox item = createMenuItem(ICONS[i], LABELS[i], LABELS[i].equals(activeMenu), false);
@@ -169,8 +168,8 @@ public class Root extends BorderPane {
         return hbox;
     }
 
-    private HBox iconOnlyRow(String icon) {
-        ImageView imageView = new ImageView(new Image(icon));
+    private HBox iconOnlyRow() {
+        ImageView imageView = new ImageView(new Image("./assets/search.png"));
         imageView.setFitHeight(22);
         imageView.setFitWidth(22);
 
@@ -274,7 +273,7 @@ public class Root extends BorderPane {
                 Color.web("#2E5A47"), new CornerRadii(8), Insets.EMPTY)));
         if (label != null) label.setFill(Color.WHITE);
 
-        if (!hbox.getChildren().isEmpty() && hbox.getChildren().get(0) instanceof ImageView iv)
+        if (!hbox.getChildren().isEmpty() && hbox.getChildren().getFirst() instanceof ImageView iv)
             iv.setStyle("-fx-effect: null;");
     }
 

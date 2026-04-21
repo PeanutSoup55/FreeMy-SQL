@@ -132,7 +132,7 @@ public class LogsRoot extends BorderPane {
         VBox center = new VBox(0, header, table, statusLabel);
         VBox.setVgrow(table, Priority.ALWAYS);
         setCenter(center);
-
+        db.EnableLogging();
         loadLogs();
     }
 
