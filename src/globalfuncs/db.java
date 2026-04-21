@@ -157,4 +157,39 @@ public class db {
             for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
     }
+
+    public static List<String[]> GetLogs(int limit, String filterType) {
+        List<String[]> rows = new ArrayList<>();
+
+        StringBuilder q = new StringBuilder("SELECT event_time, user_host, command_type, argument " +
+                        "FROM mysql.general_log ");
+
+        if (filterType != null && !filterType.equals("ALL")){
+            q.append("WHERE command_type = ? ");
+        }
+        q.append("ORDER BY event_time DESC LIMIT ?");
+
+        try (Connection conn = Connect();
+             PreparedStatement ps = conn.prepareStatement(q.toString())) {
+
+            if (filterType != null && !filterType.equals("ALL")) {
+                ps.setString(1, filterType);
+                ps.setInt(2, limit);
+            } else {
+                ps.setInt(1, limit);
+            }
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                rows.add(new String[]{
+                        rs.getString("event_time"),
+                        rs.getString("user_host"),
+                        rs.getString("command_type"),
+                        rs.getString("argument")
+                });
+            }
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] " + e.getMessage());
+        }
+        return rows;
+    }
 }
