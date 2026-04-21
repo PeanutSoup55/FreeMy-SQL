@@ -285,9 +285,15 @@ public class SchemasRoot extends BorderPane {
         card.setMinWidth(170);
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
         card.setMaxWidth(Region.USE_COMPUTED_SIZE);
-        Image edit   = new Image("./assets/editW.png");
-        Image delete = new Image("./assets/deleteW.png");
-        HBox imageBox = new HBox(new ImageView(edit), new ImageView(delete));
+        ImageView edit = new ImageView("./assets/editW.png");
+        ImageView delete = new ImageView("./assets/deleteW.png");
+        edit.setOnMouseClicked(e ->{
+            setCenter(new SchemasEdit());
+        });
+        delete.setOnMouseClicked(e -> {
+
+        });
+        HBox imageBox = new HBox(edit, new delete);
         imageBox.setAlignment(Pos.CENTER_RIGHT);
         Label title = new Label(table.getName());
         title.setTextFill(Color.WHITE);

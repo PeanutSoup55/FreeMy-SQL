@@ -157,6 +157,17 @@ public class db {
             for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
     }
+    public static void deleteTable(Schema schema, Table table){
+        String query = "DROP TABLE IF EXISTS " + schema.getName() + "." + table.getName();
+        try(Connection conn = Connect();  Statement stmt = conn.createStatement()){
+            stmt.executeUpdate(query);
+        }catch (SQLException e){
+            System.out.println("SQL error " + e.getMessage());
+            for (StackTraceElement el : e.getStackTrace()){
+                System.err.println(el);
+            }
+        }
+    }
 
     public static void EnableLogging() {
         try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
