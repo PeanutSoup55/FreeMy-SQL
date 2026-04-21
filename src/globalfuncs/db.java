@@ -158,14 +158,36 @@ public class db {
         }
     }
 
+    public static void EnableLogging() {
+        try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("SET GLOBAL log_output = 'TABLE'");
+            stmt.executeUpdate("SET GLOBAL general_log = 'ON'");
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] " + e.getMessage());
+        }
+    }
+    public static void DisableLogging() {
+        try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("SET GLOBAL general_log = 'OFF'");
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] " + e.getMessage());
+        }
+    }
+
     public static List<String[]> GetLogs(int limit, String filterType) {
         List<String[]> rows = new ArrayList<>();
 
-        StringBuilder q = new StringBuilder("SELECT event_time, user_host, command_type, argument " +
-                        "FROM mysql.general_log ");
+        StringBuilder q = new StringBuilder(
+                "SELECT event_time, user_host, command_type, argument " +
+                        "FROM mysql.general_log " +
+                        "WHERE argument NOT LIKE '%general_log%' " +
+                        "AND argument NOT LIKE '%@@session%' " +
+                        "AND argument NOT LIKE 'SET autocommit%' " +
+                        "AND argument NOT LIKE 'SET character_set_results%' "
+        );
 
-        if (filterType != null && !filterType.equals("ALL")){
-            q.append("WHERE command_type = ? ");
+        if (filterType != null && !filterType.equals("ALL")) {
+            q.append("AND command_type = ? ");
         }
         q.append("ORDER BY event_time DESC LIMIT ?");
 

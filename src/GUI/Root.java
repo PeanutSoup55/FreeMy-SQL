@@ -205,6 +205,7 @@ public class Root extends BorderPane {
             case "Schemas": setCenter(new SchemasRoot()); break;
             case "Query": setCenter(new StackPane(new Text("Query View"))); break;
             case "Dashboard": setCenter(new StackPane(new Text("Dashboard View"))); break;
+            case "Logs" : setCenter(new LogsRoot()); break;
         }
     }
 }
