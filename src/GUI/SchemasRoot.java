@@ -26,6 +26,8 @@ public class SchemasRoot extends BorderPane {
     private HBox selectedTab;
     private final Map<String, HBox> rowNodeMap  = new HashMap<>();
     private final Map<String, VBox> cardNodeMap = new HashMap<>();
+    private final TabPane  dataTabPane = new TabPane();
+    private SplitPane mainSplit  = null;
 
     public SchemasRoot() {
         createSide();
@@ -212,6 +214,8 @@ public class SchemasRoot extends BorderPane {
         t.setFill(Color.web("#4A4A4A"));
     }
     public void createTables() {
+        mainSplit = null;
+        dataTabPane.getTabs().clear();
         rowNodeMap.clear();
         cardNodeMap.clear();
 
@@ -396,8 +400,145 @@ public class SchemasRoot extends BorderPane {
             card.getChildren().add(row);
         }
 
+        String selectedSchemaName = selectedTab != null
+                ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
+
+        Label showDataLabel = new Label("Show Data");
+        showDataLabel.setTextFill(Color.WHITE);
+        showDataLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+
+        HBox dataFooter = new HBox(showDataLabel);
+        dataFooter.setAlignment(Pos.CENTER);
+        dataFooter.setPadding(new Insets(8, 12, 8, 12));
+        dataFooter.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 0 0 10 10; -fx-cursor: hand;");
+        dataFooter.setOnMouseClicked(e -> {
+            e.consume(); // prevent card drag from firing
+            showTableData(selectedSchemaName, table);
+        });
+        card.getChildren().add(dataFooter);
+
         cardNodeMap.put(table.getName(), card);
         return card;
+    }
+
+    private void showTableData(String schemaName, Table table) {
+
+        for (Tab existing : dataTabPane.getTabs()) {
+            if (existing.getText().equals(table.getName())) {
+                dataTabPane.getSelectionModel().select(existing);
+                return;
+            }
+        }
+
+        List<String> columns = new ArrayList<>();
+        List<String[]> rows  = db.GetTableData(schemaName, table.getName(), columns);
+
+        // ── TableView ─────────────────────────────────────────────────────────
+        TableView<String[]> tv = new TableView<>();
+        tv.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tv.setFixedCellSize(36);
+        tv.setStyle("-fx-background-color: white; -fx-border-color: #E2E6E2;");
+
+        for (int i = 0; i < columns.size(); i++) {
+            final int col = i;
+            TableColumn<String[], String> tc = new TableColumn<>(columns.get(col));
+            tc.setCellValueFactory(data ->
+                    new javafx.beans.property.SimpleStringProperty(
+                            col < data.getValue().length ? data.getValue()[col] : ""));
+            tc.setCellFactory(column -> new TableCell<>() {
+                @Override protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setStyle("-fx-background-color: transparent;");
+                    } else {
+                        setText(item);
+                        setFont(Font.font("Monospace", 12));
+                        setTextFill(Color.web("#2C2C2C"));
+                        setStyle("-fx-background-color: " + (getIndex() % 2 == 0 ? "#FFFFFF" : "#F7FAF8") + "; -fx-padding: 0 12; -fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0; -fx-alignment: CENTER-LEFT;");
+                    }
+                }
+            });
+            tv.getColumns().add(tc);
+        }
+        tv.getItems().addAll(rows);
+        if (rows.isEmpty()) {
+            Label empty = new Label("No rows in this table.");
+            empty.setStyle("-fx-text-fill: #888; -fx-font-size: 13;");
+            tv.setPlaceholder(empty);
+        }
+
+        Platform.runLater(() -> {
+            tv.lookupAll(".column-header-background").forEach(n ->
+                    n.setStyle("-fx-background-color: #2E5A47;"));
+            tv.lookupAll(".column-header").forEach(n ->
+                    n.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-size: 38px;"));
+            tv.lookupAll(".column-header > .label").forEach(n ->
+                    n.setStyle("-fx-text-fill: white; -fx-font-family: Monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-alignment: CENTER-LEFT; -fx-padding: 0 12;"));
+            tv.lookupAll(".filler").forEach(n ->
+                    n.setStyle("-fx-background-color: #2E5A47;"));
+        });
+
+        Label rowCount = new Label(rows.size() + " row" + (rows.size() == 1 ? "" : "s"));
+        rowCount.setStyle("-fx-text-fill: #888; -fx-font-size: 11; -fx-padding: 4 12;");
+
+        VBox tabContent = new VBox(tv, rowCount);
+        VBox.setVgrow(tv, Priority.ALWAYS);
+        tabContent.setStyle("-fx-background-color: white;");
+
+        Tab tab = new Tab(table.getName(), tabContent);
+        tab.setStyle(inactiveTabStyle());
+        tab.setOnClosed(e -> {
+            if (dataTabPane.getTabs().isEmpty()) {
+                mainSplit = null;
+                createTables();
+            }
+        });
+
+        dataTabPane.setTabMinWidth(110);
+        dataTabPane.setTabMaxWidth(160);
+        dataTabPane.setStyle("-fx-background-color: white;" +
+                        "-fx-focus-color: transparent;" +
+                        "-fx-faint-focus-color: transparent;"
+        );
+
+        dataTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            if (oldTab != null) oldTab.setStyle(inactiveTabStyle());
+            if (newTab != null) newTab.setStyle(activeTabStyle());
+        });
+
+        dataTabPane.getTabs().add(tab);
+        dataTabPane.getSelectionModel().select(tab);
+        tab.setStyle(activeTabStyle());
+
+        if (mainSplit == null) {
+            Node canvas = getCenter();
+            mainSplit = new SplitPane();
+            mainSplit.setOrientation(javafx.geometry.Orientation.VERTICAL);
+            mainSplit.getItems().addAll(canvas, dataTabPane);
+            mainSplit.setDividerPositions(0.55);
+            setCenter(mainSplit);
+        }
+    }
+
+    private String activeTabStyle() {
+        return "-fx-background-color: #2E5A47;" +
+                "-fx-text-base-color: white;" +
+                "-fx-mark-color: white;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 6 6 0 0;" +
+                "-fx-focus-color: transparent;" +
+                "-fx-faint-focus-color: transparent;";
+    }
+
+    private String inactiveTabStyle() {
+        return "-fx-background-color: #F2F4F2;" +
+                "-fx-text-base-color: #555555;" +
+                "-fx-font-weight: normal;" +
+                "-fx-background-radius: 6 6 0 0;" +
+                "-fx-focus-color: transparent;" +
+                "-fx-faint-focus-color: transparent;";
     }
 
     private void makeDraggable(VBox card, Pane overlay, List<String[]> foreignKeys, StackPane stack) {

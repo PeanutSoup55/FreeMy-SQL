@@ -31,6 +31,35 @@ public class db {
         return databases;
     }
 
+    public static List<String[]> GetTableData(String schemaName, String tableName, List<String> outColumns) {
+        List<String[]> rows = new ArrayList<>();
+        String query = "SELECT * FROM `" + schemaName + "`.`" + tableName + "`";
+
+        try (Connection conn = Connect();
+             Statement stmt  = conn.createStatement();
+             ResultSet rs    = stmt.executeQuery(query)) {
+
+            ResultSetMetaData meta = rs.getMetaData();
+            int colCount = meta.getColumnCount();
+
+            for (int i = 1; i <= colCount; i++)
+                outColumns.add(meta.getColumnName(i));
+
+            while (rs.next()) {
+                String[] row = new String[colCount];
+                for (int i = 1; i <= colCount; i++) {
+                    String val = rs.getString(i);
+                    row[i - 1] = val != null ? val : "NULL";
+                }
+                rows.add(row);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] GetTableData — " + e.getMessage());
+        }
+        return rows;
+    }
+
     public static Schema GetTablesInSchema(String schemaName) {
         Schema schema = new Schema(schemaName);
 
