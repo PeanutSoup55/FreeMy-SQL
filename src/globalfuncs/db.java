@@ -114,6 +114,43 @@ public class db {
         return fks;
     }
 
+    public static String getTableConnections(String schema, String table) {
+        StringBuilder report = new StringBuilder();
+        String query = "SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME " +
+                "FROM information_schema.KEY_COLUMN_USAGE " +
+                "WHERE CONSTRAINT_SCHEMA = ? AND (TABLE_NAME = ? OR REFERENCED_TABLE_NAME = ?)";
+
+        try (Connection conn = Connect(); PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, schema);
+            pstmt.setString(2, table);
+            pstmt.setString(3, table);
+            ResultSet rs = pstmt.executeQuery();
+            List<String> incoming = new ArrayList<>();
+            List<String> outgoing = new ArrayList<>();
+            while (rs.next()) {
+                String tbl = rs.getString("TABLE_NAME");
+                String refTbl = rs.getString("REFERENCED_TABLE_NAME");
+                if (refTbl == null) continue;
+
+                if (tbl.equals(table)) {
+                    outgoing.add(" -> " + refTbl + " (" + rs.getString("REFERENCED_COLUMN_NAME") + ")");
+                } else {
+                    incoming.add(" <- " + tbl + " (" + rs.getString("COLUMN_NAME") + ")");
+                }
+            }
+            if (!incoming.isEmpty()) {
+                report.append("Referenced by (will break):\n").append(String.join("\n", incoming)).append("\n\n");
+            }
+            if (!outgoing.isEmpty()) {
+                report.append("References (depends on):\n").append(String.join("\n", outgoing));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return report.toString();
+    }
+
+
     public static void MakeSchema(Schema schema) {
         try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + schema.getName() + "`");

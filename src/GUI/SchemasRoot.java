@@ -272,10 +272,16 @@ public class SchemasRoot extends BorderPane {
 
         editWrapper.setCursor(Cursor.HAND);
         deleteWrapper.setCursor(Cursor.HAND);
+
         editWrapper.setOnMouseClicked(e ->{
             setCenter(new TableEdit());
         });
+
         deleteWrapper.setOnMouseClicked(e -> {
+            String selectedSchemaName = selectedTab != null
+                    ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                    : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
+
             Dialog<ButtonType> dialog = new Dialog<>();
             dialog.setTitle("Delete Table");
             dialog.setHeaderText(null);
@@ -301,8 +307,23 @@ public class SchemasRoot extends BorderPane {
             input.setPromptText(table.getName());
             input.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-color: #CCCCCC; -fx-padding: 6;");
 
-            VBox content = new VBox(10, warning, instruction, input);
+            VBox content = new VBox(10);
             content.setPadding(new Insets(12));
+
+            String connections = db.getTableConnections(selectedSchemaName, table.getName());
+            if (!connections.isEmpty()) {
+                Label connectionLabel = new Label("Warning: Foreign Key Connections Found");
+                connectionLabel.setStyle("-fx-text-fill: #c0392b; -fx-font-weight: bold;");
+
+                TextArea connectionArea = new TextArea(connections);
+                connectionArea.setEditable(false);
+                connectionArea.setPrefHeight(100);
+                connectionArea.setStyle("-fx-font-family: 'Monospace'; -fx-font-size: 11px;");
+
+                content.getChildren().addAll(connectionLabel, connectionArea, new Separator());
+            }
+            content.getChildren().addAll(warning, instruction, input);
+
             VBox wrapper = new VBox(headerBox, content);
             wrapper.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
             dialog.getDialogPane().setContent(wrapper);
@@ -323,15 +344,12 @@ public class SchemasRoot extends BorderPane {
 
             Optional<ButtonType> result = dialog.showAndWait();
             if (result.isPresent() && result.get() == deleteButtonType) {
-                String selectedSchemaName = selectedTab != null
-                        ? ((Text) selectedTab.getChildren().getFirst()).getText()
-                        : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
-
                 db.deleteTable(new Schema(selectedSchemaName), table);
                 createTables();
                 System.out.println("Table " + table.getName() + " deleted successfully.");
             }
         });
+
         HBox imageBox = new HBox(editWrapper, deleteWrapper);
         imageBox.setAlignment(Pos.CENTER_RIGHT);
         Label title = new Label(table.getName());
