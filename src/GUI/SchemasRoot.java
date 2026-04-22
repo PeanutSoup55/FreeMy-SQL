@@ -273,8 +273,23 @@ public class SchemasRoot extends BorderPane {
         editWrapper.setCursor(Cursor.HAND);
         deleteWrapper.setCursor(Cursor.HAND);
 
-        editWrapper.setOnMouseClicked(e ->{
-            setCenter(new TableEdit());
+        editWrapper.setOnMouseClicked(e -> {
+            String selectedSchemaName = selectedTab != null
+                    ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                    : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
+
+            // Build sibling-table PK list for the FK reference dropdowns
+            Schema fullSchema = db.GetTablesInSchema(selectedSchemaName);
+            List<String> pks = new ArrayList<>();
+            for (Table t : fullSchema.getTables()) {
+                for (Field f : t.getFields()) {
+                    if (f.isPrimary()) {
+                        pks.add(t.getName() + "(" + f.getName() + ")");
+                    }
+                }
+            }
+
+            setCenter(new TableEdit(this, selectedSchemaName, table, pks));
         });
 
         deleteWrapper.setOnMouseClicked(e -> {
