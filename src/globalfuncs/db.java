@@ -6,12 +6,13 @@ import Objects.*;
 
 
 public class db {
-    private static final String USER = creds.getUser();
-    private static final String URL = creds.getUrl();
-    private static final String PASS = creds.getPass();
 
-    public static Connection Connect() throws SQLException{
-        return DriverManager.getConnection(URL, USER, PASS);
+    public static Connection Connect() throws SQLException {
+        return DriverManager.getConnection(
+                creds.getUrl(),
+                creds.getUser(),
+                creds.getPass()
+        );
     }
 
     public static List<Schema> Schemas(){
