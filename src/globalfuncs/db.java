@@ -179,7 +179,6 @@ public class db {
         return report.toString();
     }
 
-
     public static void MakeSchema(Schema schema) {
         try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + schema.getName() + "`");
@@ -217,6 +216,7 @@ public class db {
             for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
     }
+
     public static void deleteSchema(Schema schema){
         String query = "DROP DATABASE IF EXISTS " + schema.getName();
         try (Connection conn = Connect(); Statement statement = conn.createStatement()){
@@ -226,6 +226,7 @@ public class db {
             for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
     }
+
     public static void deleteTable(Schema schema, Table table) {
         String disableChecks = "SET FOREIGN_KEY_CHECKS = 0";
         String dropTable = String.format("DROP TABLE IF EXISTS `%s`.`%s`", schema.getName(), table.getName());
@@ -423,5 +424,50 @@ public class db {
             for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
 
+    }
+
+    public static String ExecuteRaw(String sql) {
+        if (sql == null || sql.isBlank()) return "ERROR: Query is empty.";
+
+        try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
+            boolean hasResult = stmt.execute(sql);
+            StringBuilder sb = new StringBuilder();
+
+            do {
+                if (hasResult) {
+                    ResultSet rs = stmt.getResultSet();
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int colCount = meta.getColumnCount();
+
+                    for (int i = 1; i <= colCount; i++)
+                        sb.append(String.format("%-20s", meta.getColumnName(i)));
+                    sb.append("\n").append("-".repeat(colCount * 20)).append("\n");
+
+                    int rowCount = 0;
+                    while (rs.next()) {
+                        for (int i = 1; i <= colCount; i++) {
+                            String val = rs.getString(i);
+                            sb.append(String.format("%-20s", val != null ? val : "NULL"));
+                        }
+                        sb.append("\n");
+                        rowCount++;
+                    }
+                    sb.append("\n(").append(rowCount).append(" row").append(rowCount == 1 ? "" : "s").append(")\n\n");
+
+                } else {
+                    int count = stmt.getUpdateCount();
+                    if (count != -1) {
+                        sb.append("OK — ").append(count).append(" row").append(count == 1 ? "" : "s").append(" affected.\n");
+                    }
+                }
+
+                hasResult = stmt.getMoreResults();
+            } while (hasResult || stmt.getUpdateCount() != -1);
+
+            return sb.isEmpty() ? "OK — executed successfully." : sb.toString().trim();
+
+        } catch (SQLException e) {
+            return "ERROR: " + e.getMessage();
+        }
     }
 }

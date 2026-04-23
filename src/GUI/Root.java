@@ -284,10 +284,10 @@ public class Root extends BorderPane {
 
     private void switchCenterContent(String menuTitle) {
         switch (menuTitle) {
-            case "Schemas"    -> setCenter(new SchemasRoot());
-            case "Query"      -> setCenter(new StackPane(new Text("Query View")));
-            case "Dashboard"  -> setCenter(new StackPane(new Text("Dashboard View")));
-            case "Logs"       -> setCenter(new LogsRoot());
+            case "Schemas" -> setCenter(new SchemasRoot());
+            case "Query" -> setCenter(new Query());
+            case "Dashboard" -> setCenter(new StackPane(new Text("Dashboard View")));
+            case "Logs" -> setCenter(new LogsRoot());
         }
     }
 }
