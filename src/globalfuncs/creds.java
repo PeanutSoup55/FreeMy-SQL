@@ -15,6 +15,22 @@ public class creds {
     }
     public static String getInitials(){return initials;}
 
+    public static void setInitials(String initials) {
+        creds.initials = initials;
+    }
+
+    public static void setUser(String user) {
+        creds.user = user;
+    }
+
+    public static void setPass(String pass) {
+        creds.pass = pass;
+    }
+
+    public static void setUrl(String url) {
+        creds.url = url;
+    }
+
     public static void Display(){
         System.out.println(user + "\n" + pass + "\n" + url);
     }
