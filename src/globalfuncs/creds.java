@@ -13,9 +13,7 @@ public class creds {
     public static String getUrl(){
         return url;
     }
-    public static String getInitials(){
-        return initials;
-    }
+    public static String getInitials(){return initials;}
 
     public static void Display(){
         System.out.println(user + "\n" + pass + "\n" + url);
