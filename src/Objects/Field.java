@@ -5,12 +5,14 @@ public class Field {
     private String type;
     private boolean isPrimary;
     private String reference;
+    private String oldName;
 
     public Field(String reference, boolean isPrimary, String type, String name) {
         this.reference = reference;
         this.isPrimary = isPrimary;
         this.type = type;
         this.name = name;
+        this.oldName = name;
     }
 
     public String getName() {
@@ -43,5 +45,11 @@ public class Field {
 
     public void setReference(String reference) {
         this.reference = reference;
+    }
+
+    public String getOldName(){ return oldName; }
+
+    public void setOldName(String oldName) {
+        this.oldName = oldName;
     }
 }

@@ -306,12 +306,12 @@ public class db {
             stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
             String newName = updatedTable.getName();
             if (!originalTableName.equals(newName)) {
-                ResultSet refRs = conn.createStatement().executeQuery("SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_COLUMN_NAME " +
+                ResultSet refRs = conn.createStatement().executeQuery(
+                        "SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_COLUMN_NAME " +
                                 "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " +
-                                "WHERE TABLE_SCHEMA          = '" + schemaName + "' " +
-                                "  AND REFERENCED_TABLE_NAME = '" + originalTableName + "'"
+                                "WHERE TABLE_SCHEMA = '" + schemaName + "' " +
+                                "AND REFERENCED_TABLE_NAME = '" + originalTableName + "'"
                 );
-
                 List<String[]> refs = new ArrayList<>();
                 while (refRs.next()) refs.add(new String[]{
                         refRs.getString("TABLE_NAME"),
@@ -322,83 +322,75 @@ public class db {
                 refRs.close();
 
                 for (String[] ref : refs) {
-                    String refTable      = ref[0];
-                    String constraintName = ref[1];
-                    String fkCol         = ref[2];
-                    String referencedCol = ref[3];
-                    stmt.executeUpdate("ALTER TABLE `" + schemaName + "`.`" + refTable + "` " + "DROP FOREIGN KEY `" + constraintName + "`");
-                    stmt.executeUpdate("ALTER TABLE `" + schemaName + "`.`" + refTable + "` " + "ADD FOREIGN KEY (`" + fkCol + "`) " + "REFERENCES `" + schemaName + "`.`" + newName + "`(`" + referencedCol + "`)");
-                    System.out.println("[SQL] Updated external FK: " + refTable + "." + fkCol + " → " + newName + "(" + referencedCol + ")");
+                    stmt.executeUpdate("ALTER TABLE `" + schemaName + "`.`" + ref[0] + "` DROP FOREIGN KEY `" + ref[1] + "`");
+                    stmt.executeUpdate("ALTER TABLE `" + schemaName + "`.`" + ref[0] + "` ADD FOREIGN KEY (`" + ref[2] + "`) REFERENCES `" + schemaName + "`.`" + newName + "`(`" + ref[3] + "`)");
                 }
-
-                stmt.executeUpdate("RENAME TABLE `" + schemaName + "`.`" + originalTableName + "` " + "TO `" + schemaName + "`.`" + newName + "`");
+                stmt.executeUpdate("RENAME TABLE `" + schemaName + "`.`" + originalTableName + "` TO `" + schemaName + "`.`" + newName + "`");
                 System.out.println("[SQL] Renamed: " + originalTableName + " → " + newName);
             }
 
-            ResultSet fkRs = conn.createStatement().executeQuery("SELECT CONSTRAINT_NAME " +
-                            "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " +
-                            "WHERE TABLE_SCHEMA          = '" + schemaName + "' " +
-                            "  AND TABLE_NAME            = '" + newName + "' " +
-                            "  AND REFERENCED_TABLE_NAME IS NOT NULL"
+            ResultSet fkRs = conn.createStatement().executeQuery("SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " + "WHERE TABLE_SCHEMA = '" + schemaName + "' AND TABLE_NAME = '" + newName + "' AND REFERENCED_TABLE_NAME IS NOT NULL"
             );
             List<String> ownConstraints = new ArrayList<>();
             while (fkRs.next()) ownConstraints.add(fkRs.getString("CONSTRAINT_NAME"));
             fkRs.close();
-
             for (String c : ownConstraints) {
-                stmt.executeUpdate("ALTER TABLE `" + schemaName + "`.`" + newName + "` " + "DROP FOREIGN KEY `" + c + "`");
-                System.out.println("[SQL] Dropped own FK constraint: " + c);
+                stmt.executeUpdate("ALTER TABLE `" + schemaName + "`.`" + newName + "` DROP FOREIGN KEY `" + c + "`");
+                System.out.println("[SQL] Dropped FK: " + c);
             }
 
             Map<String, String> existingCols = new LinkedHashMap<>();
             ResultSet colRs = conn.createStatement().executeQuery("SHOW COLUMNS FROM `" + schemaName + "`.`" + newName + "`");
-            while (colRs.next()) {
-                existingCols.put(
-                        colRs.getString("Field").toLowerCase(),
-                        colRs.getString("Type").toUpperCase()
-                );
-            }
+            while (colRs.next()) existingCols.put(colRs.getString("Field").toLowerCase(), colRs.getString("Type").toUpperCase());
             colRs.close();
 
-            Map<String, Field> newColMap = new LinkedHashMap<>();
-            Field pkField = null;
+            String pkColName = "";
             for (Field f : updatedTable.getFields()) {
-                if (f.isPrimary()) { pkField = f; continue; }
-                if (f.getName() == null || f.getName().isBlank()) continue;
-                if (f.getType() == null || f.getType().isBlank()) continue;
-                newColMap.put(f.getName().toLowerCase(), f);
+                if (f.isPrimary()) { pkColName = f.getName().toLowerCase(); break; }
             }
-            String pkColName = pkField != null ? pkField.getName().toLowerCase() : "";
 
-            for (String col : existingCols.keySet()) {
-                if (col.equals(pkColName)) continue;
-                if (!newColMap.containsKey(col)) {
-                    String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` " + "DROP COLUMN `" + col + "`";
-                    System.out.println("[SQL] " + sql);
-                    stmt.executeUpdate(sql);
-                }
+            Set<String> keptOldNames = new HashSet<>();
+            keptOldNames.add(pkColName);
+            for (Field f : updatedTable.getFields()) {
+                if (f.isPrimary()) continue;
+                if (f.getOldName() != null) keptOldNames.add(f.getOldName().toLowerCase());
+                if (f.getName()    != null) keptOldNames.add(f.getName().toLowerCase());
+            }
+
+            for (String col : new ArrayList<>(existingCols.keySet())) {
+                if (keptOldNames.contains(col)) continue;
+                String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` DROP COLUMN `" + col + "`";
+                System.out.println("[SQL] " + sql);
+                stmt.executeUpdate(sql);
+                existingCols.remove(col);
             }
 
             for (Field f : updatedTable.getFields()) {
                 if (f.isPrimary()) continue;
                 if (f.getName() == null || f.getName().isBlank()) continue;
 
-                String safeType = f.getType();
+                String safeType  = f.getType();
                 if (safeType == null || safeType.isBlank() ||
                         safeType.equalsIgnoreCase("VARCHAR") ||
                         safeType.equalsIgnoreCase("CHAR") ||
-                        safeType.equalsIgnoreCase("DECIMAL")) {
-                    System.err.println("[SQL SKIP] Type '" + safeType + "' for column '" + f.getName() + "' is missing required size — skipping.");
-                    continue;
-                }
+                        safeType.equalsIgnoreCase("DECIMAL")) continue;
 
-                String colKey = f.getName().toLowerCase();
-                if (!existingCols.containsKey(colKey)) {
-                    String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` " + "ADD COLUMN `" + f.getName() + "` " + safeType;
-                    System.out.println("[SQL] " + sql);
-                    stmt.executeUpdate(sql);
-                } else if (!existingCols.get(colKey).equalsIgnoreCase(safeType)) {
-                    String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` " + "MODIFY COLUMN `" + f.getName() + "` " + safeType;
+                String colKey    = f.getName().toLowerCase();
+                String oldColKey = f.getOldName() != null ? f.getOldName().toLowerCase() : colKey;
+
+                if (existingCols.containsKey(oldColKey)) {
+                    if (!oldColKey.equals(colKey)) {
+                        String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` RENAME COLUMN `" + f.getOldName() + "` TO `" + f.getName() + "`";
+                        System.out.println("[SQL] " + sql);
+                        stmt.executeUpdate(sql);
+                    }
+                    if (!existingCols.get(oldColKey).equalsIgnoreCase(safeType)) {
+                        String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` MODIFY COLUMN `" + f.getName() + "` " + safeType;
+                        System.out.println("[SQL] " + sql);
+                        stmt.executeUpdate(sql);
+                    }
+                } else if (!existingCols.containsKey(colKey)) {
+                    String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` ADD COLUMN `" + f.getName() + "` " + safeType;
                     System.out.println("[SQL] " + sql);
                     stmt.executeUpdate(sql);
                 }
@@ -407,18 +399,12 @@ public class db {
             for (Field f : updatedTable.getFields()) {
                 if (f.isPrimary()) continue;
                 if (f.getReference() == null || f.getReference().isBlank()) continue;
-
                 int paren = f.getReference().indexOf('(');
                 if (paren < 0) continue;
-
                 String refTbl = f.getReference().substring(0, paren);
                 String refCol = f.getReference().substring(paren + 1, f.getReference().length() - 1);
-
                 if (refTbl.isBlank() || refCol.isBlank()) continue;
-
-                String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` " +
-                        "ADD FOREIGN KEY (`" + f.getName() + "`) " +
-                        "REFERENCES `" + schemaName + "`.`" + refTbl + "`(`" + refCol + "`)";
+                String sql = "ALTER TABLE `" + schemaName + "`.`" + newName + "` ADD FOREIGN KEY (`" + f.getName() + "`) REFERENCES `" + schemaName + "`.`" + refTbl + "`(`" + refCol + "`)";
                 System.out.println("[SQL] " + sql);
                 stmt.executeUpdate(sql);
             }
@@ -430,7 +416,6 @@ public class db {
             System.err.println("[SQL ERROR] EditTable — " + e.getMessage());
             for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
         }
-
     }
 
     public static String ExecuteRaw(String sql) {

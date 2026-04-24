@@ -174,11 +174,14 @@ public class TableEdit extends VBox {
         private final TextField nameField;
         private final ComboBox<String> typeBox;
         private final ComboBox<String> refBox;
+        private final String originalName;
 
         FieldEntry(TableEdit parent, Field prefill) {
             setAlignment(Pos.CENTER_LEFT);
             setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
             setPadding(new Insets(0, 14, 0, 0));
+
+            this.originalName = prefill != null ? prefill.getName() : null;
 
             nameField = new TextField(prefill != null ? prefill.getName() : "");
             nameField.setPromptText("Field Name...");
@@ -213,7 +216,9 @@ public class TableEdit extends VBox {
             String type = typeBox.getValue();
             if (name.isEmpty()) { SchemasAdd.warn("Field name cannot be empty."); return null; }
             if (type == null) { SchemasAdd.warn("Select a type for field: " + name); return null; }
-            return new Field(refBox.getValue(), false, type, name);
+            Field f = new Field(refBox.getValue(), false, type, name);
+            if (originalName != null) f.setOldName(originalName); // ADD THIS
+            return f;
         }
     }
 }
