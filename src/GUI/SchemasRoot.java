@@ -469,15 +469,19 @@ public class SchemasRoot extends BorderPane {
             tv.setPlaceholder(empty);
         }
 
-        Platform.runLater(() -> {
-            tv.lookupAll(".column-header-background").forEach(n ->
-                    n.setStyle("-fx-background-color: #2E5A47;"));
-            tv.lookupAll(".column-header").forEach(n ->
-                    n.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-size: 38px;"));
-            tv.lookupAll(".column-header > .label").forEach(n ->
-                    n.setStyle("-fx-text-fill: white; -fx-font-family: Monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-alignment: CENTER-LEFT; -fx-padding: 0 12;"));
-            tv.lookupAll(".filler").forEach(n ->
-                    n.setStyle("-fx-background-color: #2E5A47;"));
+        tv.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                Platform.runLater(() -> {
+                    tv.lookupAll(".column-header-background").forEach(n ->
+                            n.setStyle("-fx-background-color: #2E5A47;"));
+                    tv.lookupAll(".column-header").forEach(n ->
+                            n.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-size: 38px;"));
+                    tv.lookupAll(".column-header > .label").forEach(n ->
+                            n.setStyle("-fx-text-fill: white; -fx-font-family: Monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-alignment: CENTER-LEFT; -fx-padding: 0 12;"));
+                    tv.lookupAll(".filler").forEach(n ->
+                            n.setStyle("-fx-background-color: #2E5A47;"));
+                });
+            }
         });
 
         Label rowCount = new Label(rows.size() + " row" + (rows.size() == 1 ? "" : "s"));
