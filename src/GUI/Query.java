@@ -113,7 +113,7 @@ public class Query extends VBox {
         );
         runBtn.setOnAction(e -> runQuery());
 
-        Button clearBtn = new Button("Clear");
+        Button clearBtn = new Button("Clear Input/Output");
         clearBtn.setStyle("-fx-background-color: white;" +
                 "-fx-text-fill: #2E5A47;" +
                 "-fx-border-color: #2E5A47;" +
@@ -155,13 +155,26 @@ public class Query extends VBox {
         );
         histNext.setOnAction(e -> navigateHistory(1));
 
+        Button histClear = new Button("Clear History");
+        histClear.setStyle("-fx-background-color: white;" +
+                "-fx-text-fill: #2E5A47;" +
+                "-fx-border-color: #2E5A47;" +
+                "-fx-border-radius: 8;" +
+                "-fx-background-radius: 8;" +
+                "-fx-font-weight: bold;" +
+                "-fx-cursor: hand;" +
+                "-fx-padding: 10 28;" +
+                "-fx-font-size: 13;"
+        );
+        histClear.setOnAction(e -> clearHist());
+
         statusLabel = new Label("");
         statusLabel.setStyle("-fx-font-size: 12; -fx-font-weight: bold;");
 
         Region actionSpacer = new Region();
         HBox.setHgrow(actionSpacer, Priority.ALWAYS);
 
-        HBox actionRow = new HBox(12, runBtn, clearBtn, histPrev, histNext, actionSpacer, statusLabel);
+        HBox actionRow = new HBox(12, runBtn, clearBtn, histPrev, histNext, histClear, actionSpacer, statusLabel);
         actionRow.setAlignment(Pos.CENTER_LEFT);
 
         Label outputLabel = new Label("Output");
@@ -217,6 +230,11 @@ public class Query extends VBox {
         String result = db.ExecuteRaw(sql);
         outputArea.setText(result);
         setStatus(result.startsWith("ERROR:") ? "✕  Error" : "✓  Done", result.startsWith("ERROR:"));
+    }
+
+    private void clearHist(){
+        history.clear();
+        refreshHistoryPanel();
     }
 
     private void navigateHistory(int direction) {
