@@ -1,4 +1,4 @@
-package GUI;
+package GUI.Schemas;
 
 public class SchemasEdit {
 }

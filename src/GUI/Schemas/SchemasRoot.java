@@ -1,4 +1,4 @@
-package GUI;
+package GUI.Schemas;
 import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
@@ -469,8 +469,8 @@ public class SchemasRoot extends BorderPane {
             tv.setPlaceholder(empty);
         }
 
-        tv.sceneProperty().addListener((obs, oldScene, newScene) -> {
-            if (newScene != null) {
+        tv.skinProperty().addListener((obs, oldSkin, newSkin) -> {
+            if (newSkin != null) {
                 Platform.runLater(() -> {
                     tv.lookupAll(".column-header-background").forEach(n ->
                             n.setStyle("-fx-background-color: #2E5A47;"));

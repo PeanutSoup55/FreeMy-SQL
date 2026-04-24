@@ -1,4 +1,4 @@
-package GUI;
+package GUI.Schemas;
 
 import Objects.Field;
 import Objects.Table;

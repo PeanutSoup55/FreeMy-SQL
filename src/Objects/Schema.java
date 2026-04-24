@@ -1,7 +1,5 @@
 package Objects;
 
-import GUI.SchemasRoot;
-
 import java.util.ArrayList;
 import java.util.List;
 
