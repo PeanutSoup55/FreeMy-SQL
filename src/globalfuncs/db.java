@@ -182,7 +182,13 @@ public class db {
 
     public static void MakeSchema(Schema schema) {
         try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
+            ResultSet rs = stmt.executeQuery("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '" + schema.getName() +"'");
+            boolean schemaExists = rs.next();
+            rs.close();
             stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + schema.getName() + "`");
+            if (schemaExists){
+                return;
+            }
             stmt.execute("USE `" + schema.getName() + "`");
             stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
             for (Table table : schema.getTables()) {
