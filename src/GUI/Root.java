@@ -17,10 +17,9 @@ public class Root extends BorderPane {
     private boolean isDark      = false;
     private boolean isCollapsed = false;
     private String  activeMenu  = "Schemas";
-    private final String[] LABELS = {"Schemas", "Dashboard", "Query", "Credentials", "Logs"};
+    private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs"};
     private final String[] ICONS  = {
             "./assets/schema.png",
-            "./assets/dashboard.png",
             "./assets/query.png",
             "./assets/creds.png",
             "./assets/logs.png"
@@ -284,7 +283,6 @@ public class Root extends BorderPane {
         switch (menuTitle) {
             case "Schemas" -> setCenter(new SchemasRoot());
             case "Query" -> setCenter(new Query());
-            case "Dashboard" -> setCenter(new StackPane(new Text("Dashboard View")));
             case "Credentials" -> setCenter(new Creds());
             case "Logs" -> setCenter(new LogsRoot());
         }
