@@ -56,10 +56,10 @@ public class Query extends VBox {
                 "-fx-text-fill: #1E3D30;"
         );
         sqlInput.textProperty().addListener((obs, oldVal, newVal) -> savedQuery = newVal);
-        sqlInput.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+        this.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.isControlDown() && e.getCode() == KeyCode.ENTER) { e.consume(); runQuery(); }
-            if (e.isControlDown() && e.getCode() == KeyCode.UP)    { e.consume(); navigateHistory(-1); }
-            if (e.isControlDown() && e.getCode() == KeyCode.DOWN)  { e.consume(); navigateHistory(1); }
+            if (e.isControlDown() && e.getCode() == KeyCode.DOWN)    { e.consume(); navigateHistory(-1); }
+            if (e.isControlDown() && e.getCode() == KeyCode.UP)  { e.consume(); navigateHistory(1); }
         });
         HBox.setHgrow(sqlInput, Priority.ALWAYS);
 
