@@ -5,10 +5,7 @@ import Objects.Table;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.Control;
-import javafx.scene.control.Label;
-import javafx.scene.control.SplitPane;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -87,6 +84,56 @@ public class TableCRUD extends VBox {
     }
 
     private SplitPane buildSplit() {
+        SplitPane split = new SplitPane();
+        split.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
+        split.getItems().addAll(buildDataSection(), buildFormSection());
+        split.setDividerPositions(0.62);
+        VBox.setVgrow(split, Priority.ALWAYS);
+        return split;
+    }
+
+    private VBox buildDataSection(){
+        Label sectionTitle = new Label("Existing Data");
+        sectionTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+        sectionTitle.setTextFill(Color.web("#1E3D30"));
+
+        Button refreshBtn = new Button("↻");
+        refreshBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47;" +
+                "-fx-font-size: 16; -fx-cursor: hand;");
+        refreshBtn.setOnAction(e -> loadData());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox topBar = new HBox(10, sectionTitle, spacer, refreshBtn);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setPadding(new Insets(14, 16, 10, 16));
+        topBar.setStyle("-fx-background-color: white;" +
+                "-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
+
+        dataTable.setStyle("-fx-background-color: white; -fx-border-color: transparent;");
+        dataTable.setFixedCellSize(36);
+        dataTable.setPlaceholder(styledPlaceholder("No rows yet — insert one below."));
+
+        dataTable.getSelectionModel().selectedItemProperty().addListener((obs, old, row) -> { if (row != null) populateFormForEdit(row); });
+
+        ScrollPane tableScroll = new ScrollPane(dataTable);
+        tableScroll.setFitToHeight(true);
+        tableScroll.setFitToWidth(false);
+        tableScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        tableScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        tableScroll.setStyle("-fx-background-color: white; -fx-background: white;");
+
+        dataTable.prefHeightProperty().bind(tableScroll.heightProperty());
+
+        VBox.setVgrow(tableScroll, Priority.ALWAYS);
+
+        VBox section = new VBox(0, topBar, tableScroll);
+        VBox.setVgrow(section, Priority.ALWAYS);
+        section.setStyle("-fx-background-color: white;");
+        return section;
+    }
+    private VBox buildFormSection(){
 
     }
 
