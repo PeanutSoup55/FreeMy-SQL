@@ -259,28 +259,35 @@ public class SchemasRoot extends BorderPane {
     }
 
     public VBox buildCard(Table table) {
+        String selectedSchemaName = selectedTab != null
+                ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
         VBox card = new VBox();
         card.setStyle("-fx-background-radius: 10;" +
                 "-fx-background-color: #FFFFFF;" +
                 "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.18), 10, 0, 0, 3);");
-        card.setMinWidth(170);
+        card.setMinWidth(200);
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
         card.setMaxWidth(Region.USE_COMPUTED_SIZE);
+        ImageView crud = new ImageView(new Image("./assets/crud.png"));
         ImageView edit = new ImageView(new Image("./assets/editW.png"));
         ImageView delete = new ImageView(new Image("./assets/deleteW.png"));
+        StackPane crudWrapper = new StackPane(crud);
         StackPane editWrapper = new StackPane(edit);
         StackPane deleteWrapper = new StackPane(delete);
-
+        crudWrapper.setPrefSize(30, 30);
         editWrapper.setPrefSize(30, 30);
         deleteWrapper.setPrefSize(30, 30);
-
+        crudWrapper.setCursor(Cursor.HAND);
         editWrapper.setCursor(Cursor.HAND);
         deleteWrapper.setCursor(Cursor.HAND);
 
+        crudWrapper.setOnMouseClicked(e -> {
+            setCenter(new TableCRUD(this, selectedSchemaName, table));
+        });
+
+
         editWrapper.setOnMouseClicked(e -> {
-            String selectedSchemaName = selectedTab != null
-                    ? ((Text) selectedTab.getChildren().getFirst()).getText()
-                    : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
             // Build sibling-table PK list for the FK reference dropdowns
             Schema fullSchema = db.GetTablesInSchema(selectedSchemaName);
@@ -297,9 +304,6 @@ public class SchemasRoot extends BorderPane {
         });
 
         deleteWrapper.setOnMouseClicked(e -> {
-            String selectedSchemaName = selectedTab != null
-                    ? ((Text) selectedTab.getChildren().getFirst()).getText()
-                    : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
             Dialog<ButtonType> dialog = new Dialog<>();
             dialog.setTitle("Delete Table");
@@ -369,7 +373,7 @@ public class SchemasRoot extends BorderPane {
             }
         });
 
-        HBox imageBox = new HBox(editWrapper, deleteWrapper);
+        HBox imageBox = new HBox(crudWrapper, editWrapper, deleteWrapper);
         imageBox.setAlignment(Pos.CENTER_RIGHT);
         Label title = new Label(table.getName());
         title.setTextFill(Color.WHITE);
@@ -400,9 +404,6 @@ public class SchemasRoot extends BorderPane {
             card.getChildren().add(row);
         }
 
-        String selectedSchemaName = selectedTab != null
-                ? ((Text) selectedTab.getChildren().getFirst()).getText()
-                : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
         Label showDataLabel = new Label("Show Data");
         showDataLabel.setTextFill(Color.WHITE);
@@ -413,7 +414,7 @@ public class SchemasRoot extends BorderPane {
         dataFooter.setPadding(new Insets(8, 12, 8, 12));
         dataFooter.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 0 0 10 10; -fx-cursor: hand;");
         dataFooter.setOnMouseClicked(e -> {
-            e.consume(); // prevent card drag from firing
+            e.consume();
             showTableData(selectedSchemaName, table);
         });
         card.getChildren().add(dataFooter);
