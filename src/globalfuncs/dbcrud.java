@@ -44,14 +44,10 @@ public class dbcrud {
         }
     }
 
-    public static boolean UpdateRow(String schemaName, String tableName,
-                                    Map<String, String> values, String pkCol, String pkVal) {
-        String sets  = values.keySet().stream().map(k -> "`" + k + "` = ?")
-                .collect(java.util.stream.Collectors.joining(", "));
-        String query = "UPDATE `" + schemaName + "`.`" + tableName + "` SET " + sets +
-                " WHERE `" + pkCol + "` = ?";
-        try (Connection conn = Connect();
-             PreparedStatement ps = conn.prepareStatement(query)) {
+    public static boolean UpdateRow(String schemaName, String tableName, Map<String, String> values, String pkCol, String pkVal) {
+        String sets  = values.keySet().stream().map(k -> "`" + k + "` = ?").collect(java.util.stream.Collectors.joining(", "));
+        String query = "UPDATE `" + schemaName + "`.`" + tableName + "` SET " + sets + " WHERE `" + pkCol + "` = ?";
+        try (Connection conn = Connect(); PreparedStatement ps = conn.prepareStatement(query)) {
             int i = 1;
             for (String val : values.values()) ps.setString(i++, val);
             ps.setString(i, pkVal);
@@ -59,6 +55,17 @@ public class dbcrud {
             return true;
         } catch (SQLException e) {
             System.err.println("[SQL ERROR] UpdateRow — " + e.getMessage()); return false;
+        }
+    }
+
+    public static boolean DeleteRow(String schemaName, String tableName, String pkCol, String pkVal) {
+        String query = "DELETE FROM `" + schemaName + "`.`" + tableName + "` WHERE `" + pkCol + "` = ?";
+        try (Connection conn = Connect(); PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, pkVal);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] DeleteRow — " + e.getMessage()); return false;
         }
     }
 
