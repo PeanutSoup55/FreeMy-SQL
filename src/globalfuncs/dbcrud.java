@@ -3,6 +3,7 @@ package globalfuncs;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class dbcrud {
     public static Connection Connect() throws SQLException {
@@ -27,6 +28,20 @@ public class dbcrud {
             System.err.println("[SQL ERROR] - GetColumnValues - " + e.getMessage());
         }
         return values;
+    }
+
+    public static boolean InsertRow(String schemaName, String tableName, Map<String, String> values){
+        String cols  = values.keySet().stream().map(k -> "`" + k + "`").collect(java.util.stream.Collectors.joining(", "));
+        String marks = values.keySet().stream().map(k -> "?").collect(java.util.stream.Collectors.joining(", "));
+        String query = "INSERT INTO `" + schemaName + "`.`" + tableName + "` (" + cols + ") VALUES (" + marks + ")";
+        try (Connection conn = Connect(); PreparedStatement ps = conn.prepareStatement(query)) {
+            int i = 1;
+            for (String val : values.values()) ps.setString(i++, val);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] InsertRow — " + e.getMessage()); return false;
+        }
     }
 
 }
