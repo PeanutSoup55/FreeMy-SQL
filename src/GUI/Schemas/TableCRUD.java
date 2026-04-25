@@ -2,13 +2,21 @@ package GUI.Schemas;
 
 import Objects.Field;
 import Objects.Table;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.SplitPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 
 import javax.swing.text.TableView;
 import java.util.ArrayList;
@@ -52,6 +60,29 @@ public class TableCRUD extends VBox {
     }
 
     private HBox buildHeader() {
+        Button backBtn = new Button("← Back");
+        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47;" +
+                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 13;");
+        backBtn.setOnAction(e -> root.createTables());
+
+        Text title = new Text(table.getName());
+        title.setFont(Font.font("System", FontWeight.BOLD, 20));
+        title.setFill(Color.web("#1E3D30"));
+
+        Label badge = new Label(schemaName);
+        badge.setStyle("-fx-background-color: #E9F5E8; -fx-text-fill: #2E5A47;" +
+                "-fx-background-radius: 6; -fx-padding: 4 10;" +
+                "-fx-font-weight: bold; -fx-font-size: 11;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox header = new HBox(14, backBtn, title, badge, spacer);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(18, 24, 14, 24));
+        header.setStyle("-fx-background-color: white;" +
+                "-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
+        return header;
 
     }
 
