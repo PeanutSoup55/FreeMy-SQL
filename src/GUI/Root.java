@@ -20,10 +20,10 @@ public class Root extends BorderPane {
     private String  activeMenu = "Schemas";
     private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs"};
     private final String[] ICONS  = {
-            "./assets/schema.png",
-            "./assets/query.png",
-            "./assets/creds.png",
-            "./assets/logs.png"
+            "assets/schema.png",
+            "assets/query.png",
+            "assets/creds.png",
+            "assets/logs.png"
     };
 
     public Root() {
@@ -51,9 +51,10 @@ public class Root extends BorderPane {
                         "-fx-background-color: #FFFFFF;" +
                         "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
         vBox.setPrefWidth(260);
+        ImageView icon = new ImageView(new Image(getClass().getClassLoader().getResourceAsStream("assets/search.png")));
 
         HBox top = createTopHBox(creds.getInitials(), creds.getUser(), creds.getUrl(), true);
-        HBox search = createSearch(Objects.requireNonNull(getClass().getResourceAsStream("./assets/search.png")).toString(), "Search...");
+        HBox search = createSearch(icon, "Search...");
 
         vBox.getChildren().add(top);
         vBox.getChildren().add(search);
@@ -107,7 +108,7 @@ public class Root extends BorderPane {
 
         StackPane avatar = new StackPane(rec, initialLabel);
 
-        ImageView arrowIcon = new ImageView(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/arrow.png"))));
+        ImageView arrowIcon = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/arrow.png"))));
         arrowIcon.setFitWidth(16);
         arrowIcon.setFitHeight(16);
         if (expanded) arrowIcon.setRotate(180);
@@ -147,16 +148,15 @@ public class Root extends BorderPane {
         return hbox;
     }
 
-    public HBox createSearch(String icon, String search) {
+    public HBox createSearch(ImageView icon, String search) {
         Text label = new Text(search);
         label.setFont(Font.font("System", 13));
         label.setStyle("-fx-font-weight: bold;");
         label.setFill(Color.web("#4A4A4A"));
 
-        ImageView imageView = new ImageView(new Image(icon));
-        imageView.setFitHeight(22); imageView.setFitWidth(22);
+        icon.setFitHeight(22); icon.setFitWidth(22);
 
-        HBox hbox = new HBox(20, imageView, label);
+        HBox hbox = new HBox(20, icon, label);
         hbox.setAlignment(Pos.CENTER_LEFT);
         hbox.setPadding(new Insets(14, 20, 14, 20));
         hbox.setMinWidth(200);
@@ -167,7 +167,7 @@ public class Root extends BorderPane {
     }
 
     private HBox iconOnlyRow() {
-        ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getResourceAsStream("./assets/search.png"))));
+        ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/search.png"))));
         imageView.setFitHeight(22);
         imageView.setFitWidth(22);
 
@@ -182,7 +182,7 @@ public class Root extends BorderPane {
     }
 
     private HBox createMenuItem(String icon, String labelText, boolean isSelected, boolean showLabel) {
-        ImageView imageView = new ImageView(new Image(icon));
+        ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(icon))));
         imageView.setFitHeight(22);
         imageView.setFitWidth(22);
 

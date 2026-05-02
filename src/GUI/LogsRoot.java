@@ -19,29 +19,26 @@ import java.util.concurrent.TimeUnit;
 
 public class LogsRoot extends BorderPane {
 
-    private final TableView<String[]>  table = new TableView<>();
-    private final ComboBox<String>     filterBox;
-    private final TextField            limitField;
-    private final Label                statusLabel;
-    private ScheduledExecutorService   scheduler;
+    private final TableView<String[]> table = new TableView<>();
+    private final ComboBox<String> filterBox;
+    private final TextField limitField;
+    private final Label statusLabel;
+    private ScheduledExecutorService scheduler;
 
     public LogsRoot() {
         setPadding(new Insets(24, 28, 24, 28));
         setStyle("-fx-background-color: #F2F4F2;");
 
-        // ── Title ─────────────────────────────────────────────────────────
         Text title = new Text("MySQL Logs");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
         title.setFill(Color.web("#1E3D30"));
 
-        // ── Filter dropdown ───────────────────────────────────────────────
         filterBox = new ComboBox<>(FXCollections.observableArrayList(
                 "ALL", "Query", "Execute", "Connect", "Quit", "Init DB"));
         filterBox.setValue("ALL");
         styleCombo(filterBox);
         filterBox.setOnAction(e -> loadLogs());
 
-        // ── Limit field ───────────────────────────────────────────────────
         limitField = new TextField("200");
         limitField.setPrefWidth(70);
         limitField.setStyle(
@@ -52,7 +49,6 @@ public class LogsRoot extends BorderPane {
                         "-fx-padding: 8 10;" +
                         "-fx-font-size: 13;");
 
-        // ── Buttons ───────────────────────────────────────────────────────
         Button refreshBtn = filledBtn();
         refreshBtn.setOnAction(e -> loadLogs());
 
@@ -60,8 +56,7 @@ public class LogsRoot extends BorderPane {
         autoBtn.setOnAction(e -> toggleAutoRefresh(autoBtn));
 
 
-        // ── Header row ────────────────────────────────────────────────────
-        Label typeLabel  = smallLabel("Type");
+        Label typeLabel = smallLabel("Type");
         Label limitLabel = smallLabel("Limit");
 
         Region spacer = new Region();
@@ -75,13 +70,11 @@ public class LogsRoot extends BorderPane {
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(0, 0, 16, 0));
 
-        // ── Table ─────────────────────────────────────────────────────────
-        TableColumn<String[], String> timeCol  = col("Time",         0, 175);
-        TableColumn<String[], String> userCol  = col("User / Host",  1, 175);
-        TableColumn<String[], String> typeCol  = col("Command",      2, 100);
-        TableColumn<String[], String> queryCol = col("Query",        3, -1);
+        TableColumn<String[], String> timeCol = col("Time", 0, 175);
+        TableColumn<String[], String> userCol = col("User / Host", 1, 175);
+        TableColumn<String[], String> typeCol = col("Command", 2, 100);
+        TableColumn<String[], String> queryCol = col("Query", 3, -1);
 
-        // Query column fills remaining width
         queryCol.prefWidthProperty().bind(
                 table.widthProperty()
                         .subtract(timeCol.widthProperty())
@@ -97,10 +90,8 @@ public class LogsRoot extends BorderPane {
                         "-fx-background-radius: 12;" +
                         "-fx-border-color: transparent;");
 
-        // Header background + text via CSS on the scene — applied inline per column instead
         styleTableHeaders();
 
-        // Row coloring by command type
         table.setRowFactory(tv -> new TableRow<>() {
             @Override
             protected void updateItem(String[] row, boolean empty) {
@@ -109,26 +100,23 @@ public class LogsRoot extends BorderPane {
                     setStyle("-fx-background-color: white;");
                     return;
                 }
-                // Alternate subtle stripe + type color
                 int idx = getIndex();
                 String base = (idx % 2 == 0) ? "#FFFFFF" : "#F7FAF8";
                 setStyle(switch (row[2] == null ? "" : row[2]) {
                     case "Query",
                          "Execute" -> "-fx-background-color: " + base + ";";
                     case "Connect" -> "-fx-background-color: #EDF5F1;";
-                    case "Quit"    -> "-fx-background-color: #FDF6EE;";
-                    default        -> "-fx-background-color: " + base + ";";
+                    case "Quit" -> "-fx-background-color: #FDF6EE;";
+                    default -> "-fx-background-color: " + base + ";";
                 });
             }
         });
 
-        // ── Status bar ────────────────────────────────────────────────────
         statusLabel = new Label("Ready.");
         statusLabel.setTextFill(Color.web("#888888"));
         statusLabel.setFont(Font.font("System", 12));
         statusLabel.setPadding(new Insets(6, 0, 0, 2));
 
-        // ── Layout ────────────────────────────────────────────────────────
         VBox center = new VBox(0, header, table, statusLabel);
         VBox.setVgrow(table, Priority.ALWAYS);
         setCenter(center);
@@ -144,8 +132,8 @@ public class LogsRoot extends BorderPane {
         try { limit = Integer.parseInt(limitField.getText().trim()); }
         catch (NumberFormatException ignored) {}
 
-        final int    finalLimit = limit;
-        final String filter     = filterBox.getValue();
+        final int finalLimit = limit;
+        final String filter = filterBox.getValue();
 
         Thread.ofVirtual().start(() -> {
             List<String[]> rows = db.GetLogs(finalLimit, filter);
@@ -158,7 +146,6 @@ public class LogsRoot extends BorderPane {
         });
     }
 
-    // ── Auto-refresh ──────────────────────────────────────────────────────
 
     private void toggleAutoRefresh(Button btn) {
         if (scheduler == null || scheduler.isShutdown()) {
@@ -195,11 +182,8 @@ public class LogsRoot extends BorderPane {
         }
     }
 
-    // ── Table styling ─────────────────────────────────────────────────────
 
     private void styleTableHeaders() {
-        // JavaFX doesn't allow per-column header styling inline, so we inject
-        // a stylesheet string onto the scene via the table's own style class.
         table.getStylesheets().add("data:text/css," +
                 ".table-view .column-header-background {" +
                 "   -fx-background-color: %232E5A47;" +
@@ -239,12 +223,10 @@ public class LogsRoot extends BorderPane {
                 super.updateItem(s, empty);
                 if (empty || s == null) { setText(null); setGraphic(null); return; }
 
-                // Command type column — colored badge
                 if (idx == 2) {
                     HBox cell = new HBox(6);
                     cell.setAlignment(Pos.CENTER_LEFT);
 
-                    // Colored left-edge bar
                     Region bar = new Region();
                     bar.setPrefWidth(5);
                     bar.setPrefHeight(18);
@@ -253,11 +235,10 @@ public class LogsRoot extends BorderPane {
                                 case "Query",
                                      "Execute" -> "#2E5A47;";
                                 case "Connect" -> "#3A6B8A;";
-                                case "Quit"    -> "#8A3A3A;";
-                                default        -> "#888888;";
+                                case "Quit" -> "#8A3A3A;";
+                                default -> "#888888;";
                             });
 
-                    // Monospace uppercase label — no background, just colored text
                     Label lbl = new Label(s.toUpperCase());
                     lbl.setFont(Font.font("Monospace", FontWeight.BOLD, 13));
                     lbl.setTextFill(Color.web(
@@ -265,8 +246,8 @@ public class LogsRoot extends BorderPane {
                                 case "Query",
                                      "Execute" -> "#2E5A47";
                                 case "Connect" -> "#3A6B8A";
-                                case "Quit"    -> "#8A3A3A";
-                                default        -> "#888888";
+                                case "Quit" -> "#8A3A3A";
+                                default -> "#888888";
                             }));
 
                     cell.getChildren().addAll(bar, lbl);
@@ -275,7 +256,6 @@ public class LogsRoot extends BorderPane {
                     return;
                 }
 
-                // Query column — monospace, wraps
                 if (idx == 3) {
                     Text t = new Text(s);
                     t.setFont(Font.font("Monospace", 11));
@@ -287,7 +267,6 @@ public class LogsRoot extends BorderPane {
                     return;
                 }
 
-                // Time + User columns
                 setText(s);
                 setFont(Font.font("System", 12));
                 setTextFill(Color.web("#444444"));
@@ -306,7 +285,6 @@ public class LogsRoot extends BorderPane {
         return l;
     }
 
-    // ── Shared style helpers ──────────────────────────────────────────────
 
     private static void styleCombo(ComboBox<String> cb) {
         cb.setStyle(

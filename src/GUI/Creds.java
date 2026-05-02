@@ -15,6 +15,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.sql.SQLException;
+import java.util.Objects;
 
 public class Creds extends VBox {
 
@@ -73,7 +74,7 @@ public class Creds extends VBox {
             }
         });
 
-        return buildCard("User", "./assets/user.png", userLabel, changeUser, enter, userStatus);
+        return buildCard("User", Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/user.png")).toString(), userLabel, changeUser, enter, userStatus);
     }
 
     public VBox PassBox() {
@@ -103,7 +104,7 @@ public class Creds extends VBox {
             }
         });
 
-        return buildCard("Password", "./assets/lock.png", passLabel, changePass, enter, passStatus);
+        return buildCard("Password", Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/lock.png")).toString(), passLabel, changePass, enter, passStatus);
     }
 
     public VBox URLBox() {
@@ -135,7 +136,7 @@ public class Creds extends VBox {
             }
         });
 
-        return buildCard("Host URL", "./assets/link.png", urlLabel, changeUrl, enter, urlStatus);
+        return buildCard("Host URL", Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/link.png")).toString(), urlLabel, changeUrl, enter, urlStatus);
     }
 
     public VBox InitialsBox() {
@@ -165,7 +166,7 @@ public class Creds extends VBox {
             showStatus(initialsStatus, "Initials saved.", false);
         });
 
-        return buildCard("Initials", "./assets/id.png", initialsLabel, changeInitials, enter, initialsStatus);
+        return buildCard("Initials", Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/id.png")).toString(), initialsLabel, changeInitials, enter, initialsStatus);
     }
 
     private VBox buildCard(String title, String iconPath, Label currentValue, TextField input, Button saveBtn, Label status) {

@@ -269,9 +269,9 @@ public class SchemasRoot extends BorderPane {
         card.setMinWidth(200);
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
         card.setMaxWidth(Region.USE_COMPUTED_SIZE);
-        ImageView crud = new ImageView(new Image("./assets/crud.png"));
-        ImageView edit = new ImageView(new Image("./assets/editW.png"));
-        ImageView delete = new ImageView(new Image("./assets/deleteW.png"));
+        ImageView crud = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/crud.png"))));
+        ImageView edit = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/editW.png"))));
+        ImageView delete = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/deleteW.png"))));
         StackPane crudWrapper = new StackPane(crud);
         StackPane editWrapper = new StackPane(edit);
         StackPane deleteWrapper = new StackPane(delete);
@@ -281,7 +281,7 @@ public class SchemasRoot extends BorderPane {
         crudWrapper.setCursor(Cursor.HAND);
         editWrapper.setCursor(Cursor.HAND);
         deleteWrapper.setCursor(Cursor.HAND);
-        ImageView code = new ImageView(new Image("./assets/login.png"));
+        ImageView code = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/login.png"))));
         StackPane codeWrapper = new StackPane(code);
         codeWrapper.setPrefSize(30, 30);
         codeWrapper.setCursor(Cursor.HAND);
@@ -441,7 +441,6 @@ public class SchemasRoot extends BorderPane {
         List<String> columns = new ArrayList<>();
         List<String[]> rows  = db.GetTableData(schemaName, table.getName(), columns);
 
-        // ── TableView ─────────────────────────────────────────────────────────
         TableView<String[]> tv = new TableView<>();
         tv.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         tv.setFixedCellSize(36);
