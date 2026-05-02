@@ -281,6 +281,12 @@ public class SchemasRoot extends BorderPane {
         crudWrapper.setCursor(Cursor.HAND);
         editWrapper.setCursor(Cursor.HAND);
         deleteWrapper.setCursor(Cursor.HAND);
+        ImageView code = new ImageView(new Image("./assets/login.png"));
+        StackPane codeWrapper = new StackPane(code);
+        codeWrapper.setPrefSize(30, 30);
+        codeWrapper.setCursor(Cursor.HAND);
+        codeWrapper.setOnMouseClicked(e -> setCenter(new LoginGen(this, selectedSchemaName, table)));
+
 
         crudWrapper.setOnMouseClicked(e -> {
             setCenter(new TableCRUD(this, selectedSchemaName, table));
@@ -373,7 +379,7 @@ public class SchemasRoot extends BorderPane {
             }
         });
 
-        HBox imageBox = new HBox(crudWrapper, editWrapper, deleteWrapper);
+        HBox imageBox = new HBox(codeWrapper, crudWrapper, editWrapper, deleteWrapper);
         imageBox.setAlignment(Pos.CENTER_RIGHT);
         Label title = new Label(table.getName());
         title.setTextFill(Color.WHITE);

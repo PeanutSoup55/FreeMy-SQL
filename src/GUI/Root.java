@@ -14,9 +14,8 @@ import javafx.scene.text.Text;
 
 public class Root extends BorderPane {
 
-    private boolean isDark      = false;
     private boolean isCollapsed = false;
-    private String  activeMenu  = "Schemas";
+    private String  activeMenu = "Schemas";
     private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs"};
     private final String[] ICONS  = {
             "./assets/schema.png",
@@ -106,7 +105,7 @@ public class Root extends BorderPane {
 
         StackPane avatar = new StackPane(rec, initialLabel);
 
-        ImageView arrowIcon = new ImageView(new Image("./assets/arrow.png"));
+        ImageView arrowIcon = new ImageView(new Image(getClass().getResourceAsStream("/assets/arrow.png")));
         arrowIcon.setFitWidth(16);
         arrowIcon.setFitHeight(16);
         if (expanded) arrowIcon.setRotate(180);
@@ -218,52 +217,6 @@ public class Root extends BorderPane {
 
         return hbox;
     }
-
-//    public HBox createBotTab(boolean showLabel) {
-//        ImageView icon = new ImageView(new Image("./assets/moon.png"));
-//        icon.setFitHeight(22); icon.setFitWidth(22);
-//
-//        Rectangle track = new Rectangle(35, 18);
-//        track.setArcWidth(18); track.setArcHeight(18);
-//        track.setFill(isDark ? Color.web("#2E5A47") : Color.web("#BDD7BC"));
-//
-//        Circle knob = new Circle(7);
-//        knob.setFill(Color.WHITE);
-//        knob.setTranslateX(isDark ? 8 : -8);
-//
-//        StackPane switchPane = new StackPane(track, knob);
-//        switchPane.setCursor(javafx.scene.Cursor.HAND);
-//        switchPane.setOnMouseClicked(e -> {
-//            isDark = !isDark;
-//            knob.setTranslateX(isDark ? 8 : -8);
-//            track.setFill(isDark ? Color.web("#2E5A47") : Color.web("#BDD7BC"));
-//        });
-//
-//        HBox hbox;
-//        if (showLabel) {
-//            Text label = new Text("Dark Mode");
-//            label.setFont(Font.font("System", 13));
-//            label.setStyle("-fx-font-weight: bold;");
-//            label.setFill(Color.web("#4A4A4A"));
-//            Region spacer = new Region();
-//            HBox.setHgrow(spacer, Priority.ALWAYS);
-//            hbox = new HBox(20, icon, label, spacer, switchPane);
-//            hbox.setPadding(new Insets(20));
-//            hbox.setMinWidth(200);
-//        } else {
-//            hbox = new HBox(icon);
-//            hbox.setAlignment(Pos.CENTER);
-//            hbox.setPrefWidth(68);
-//            hbox.setPadding(new Insets(20, 0, 20, 0));
-//        }
-//
-//        hbox.setAlignment(Pos.CENTER_LEFT);
-//        hbox.setPrefHeight(30);
-//        hbox.setBackground(new Background(new BackgroundFill(
-//                Color.web("#E9F5E8"), new CornerRadii(8), Insets.EMPTY)));
-//        VBox.setMargin(hbox, new Insets(5, 10, 5, 10));
-//        return hbox;
-//    }
 
     private void applySelectedStyle(HBox hbox, Text label) {
         hbox.setBackground(new Background(new BackgroundFill(

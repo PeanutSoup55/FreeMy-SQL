@@ -249,8 +249,8 @@ public class SchemasAdd extends VBox {
 
     static class FieldEntry extends HBox {
 
-        private final TableEntry       parent;
-        private final TextField        nameField;
+        private final TableEntry parent;
+        private final TextField nameField;
         private final ComboBox<String> typeBox;
         private final ComboBox<String> refBox;
 
