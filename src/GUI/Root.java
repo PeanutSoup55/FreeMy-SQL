@@ -12,6 +12,8 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
+import java.util.Objects;
+
 public class Root extends BorderPane {
 
     private boolean isCollapsed = false;
@@ -51,7 +53,7 @@ public class Root extends BorderPane {
         vBox.setPrefWidth(260);
 
         HBox top = createTopHBox(creds.getInitials(), creds.getUser(), creds.getUrl(), true);
-        HBox search = createSearch("./assets/search.png", "Search...");
+        HBox search = createSearch(Objects.requireNonNull(getClass().getResourceAsStream("./assets/search.png")).toString(), "Search...");
 
         vBox.getChildren().add(top);
         vBox.getChildren().add(search);
@@ -105,7 +107,7 @@ public class Root extends BorderPane {
 
         StackPane avatar = new StackPane(rec, initialLabel);
 
-        ImageView arrowIcon = new ImageView(new Image(getClass().getResourceAsStream("/assets/arrow.png")));
+        ImageView arrowIcon = new ImageView(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/arrow.png"))));
         arrowIcon.setFitWidth(16);
         arrowIcon.setFitHeight(16);
         if (expanded) arrowIcon.setRotate(180);
@@ -165,7 +167,7 @@ public class Root extends BorderPane {
     }
 
     private HBox iconOnlyRow() {
-        ImageView imageView = new ImageView(new Image("./assets/search.png"));
+        ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getResourceAsStream("./assets/search.png"))));
         imageView.setFitHeight(22);
         imageView.setFitWidth(22);
 
@@ -197,8 +199,8 @@ public class Root extends BorderPane {
             hbox.setAlignment(Pos.CENTER_LEFT);
         } else {
             hbox = new HBox(imageView);
-            hbox.setAlignment(Pos.CENTER);   // ← centered in collapsed column
-            hbox.setPrefWidth(68);           // ← matches collapsed sidebar width
+            hbox.setAlignment(Pos.CENTER);
+            hbox.setPrefWidth(68);
             hbox.setPadding(new Insets(16, 0, 16, 0));
         }
 
