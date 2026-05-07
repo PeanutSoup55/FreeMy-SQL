@@ -10,7 +10,7 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) {
 
-        stage.setTitle("FreeMySQL");
+        stage.setTitle("Free My Query");
         Login login = new Login(stage);
         Scene scene = new Scene(login, 1700, 800);
         stage.getIcons().add(new Image(getClass().getResourceAsStream("/assets/logo3.png")));
