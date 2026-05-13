@@ -29,6 +29,7 @@ public class SchemasRoot extends BorderPane {
     private final Map<String, VBox> cardNodeMap = new HashMap<>();
     private final TabPane  dataTabPane = new TabPane();
     private SplitPane mainSplit  = null;
+    private static final java.util.prefs.Preferences PREFS = java.util.prefs.Preferences.userRoot().node("Free_My_SQL/table_positions");
 
     public SchemasRoot() {
         createSide();
@@ -242,9 +243,15 @@ public class SchemasRoot extends BorderPane {
 
         for (Table table : schema.getTables()) {
             VBox card = buildCard(table);
-            card.setLayoutX(originX + (i % perRow) * hGap);
-            card.setLayoutY(originY + ((double) i / perRow) * vGap);
-            makeDraggable(card, overlay, foreignKeys, stackPane);
+            double[] saved = loadPosition(selectedSchema, table.getName());
+            if (saved != null) {
+                card.setLayoutX(saved[0]);
+                card.setLayoutY(saved[1]);
+            } else {
+                card.setLayoutX(originX + (i % perRow) * hGap);
+                card.setLayoutY(originY + ((double) i / perRow) * vGap);
+            }
+            makeDraggable(card, overlay, foreignKeys, stackPane, selectedSchema, table.getName());
             canvas.getChildren().add(card);
             i++;
         }
@@ -382,6 +389,7 @@ public class SchemasRoot extends BorderPane {
 
             Optional<ButtonType> result = dialog.showAndWait();
             if (result.isPresent() && result.get() == deleteButtonType) {
+                PREFS.remove(selectedSchemaName + "|" + table.getName());
                 db.deleteTable(new Schema(selectedSchemaName), table);
                 createTables();
             }
@@ -551,7 +559,7 @@ public class SchemasRoot extends BorderPane {
                 "-fx-faint-focus-color: transparent;";
     }
 
-    private void makeDraggable(VBox card, Pane overlay, List<String[]> foreignKeys, StackPane stack) {
+    private void makeDraggable(VBox card, Pane overlay, List<String[]> foreignKeys, StackPane stack, String schemaName, String tableName) {
         final double[] prev = new double[2];
 
         card.setOnMousePressed(e -> {
@@ -570,6 +578,12 @@ public class SchemasRoot extends BorderPane {
             prev[0] = e.getSceneX();
             prev[1] = e.getSceneY();
             drawConnectors(overlay, foreignKeys, stack);
+            e.consume();
+        });
+
+        card.setOnMouseReleased(e -> {
+            card.setCursor(Cursor.DEFAULT);
+            savePosition(schemaName, tableName, card.getLayoutX(), card.getLayoutY());
             e.consume();
         });
     }
@@ -717,7 +731,6 @@ public class SchemasRoot extends BorderPane {
         // Perpendicular wing offset
         double wx = -Math.sin(angleRad) * (s * 0.45);
         double wy =  Math.cos(angleRad) * (s * 0.45);
-//aihbfwuebg
         Polygon arrow = new Polygon(
                 tipX,        tipY,
                 bx + wx,     by + wy,
@@ -734,5 +747,16 @@ public class SchemasRoot extends BorderPane {
         }
         createSide();
         createTables();
+    }
+
+    private void savePosition(String schema, String table, double x, double y) {
+        PREFS.put(schema + "|" + table, x + "," + y);
+    }
+
+    private double[] loadPosition(String schema, String table) {
+        String val = PREFS.get(schema + "|" + table, null);
+        if (val == null) return null;
+        String[] parts = val.split(",");
+        return new double[]{ Double.parseDouble(parts[0]), Double.parseDouble(parts[1]) };
     }
 }
