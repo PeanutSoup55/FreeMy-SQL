@@ -263,6 +263,7 @@ public class SchemasRoot extends BorderPane {
         String selectedSchemaName = selectedTab != null
                 ? ((Text) selectedTab.getChildren().getFirst()).getText()
                 : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
+
         VBox card = new VBox();
         card.setStyle("-fx-background-radius: 10;" +
                 "-fx-background-color: #FFFFFF;" +
@@ -270,33 +271,42 @@ public class SchemasRoot extends BorderPane {
         card.setMinWidth(200);
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
         card.setMaxWidth(Region.USE_COMPUTED_SIZE);
-        ImageView crud = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/crud.png"))));
-        ImageView edit = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/editW.png"))));
-        ImageView delete = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/deleteW.png"))));
-        StackPane crudWrapper = new StackPane(crud);
-        StackPane editWrapper = new StackPane(edit);
-        StackPane deleteWrapper = new StackPane(delete);
-        crudWrapper.setPrefSize(30, 30);
-        editWrapper.setPrefSize(30, 30);
-        deleteWrapper.setPrefSize(30, 30);
-        crudWrapper.setCursor(Cursor.HAND);
-        editWrapper.setCursor(Cursor.HAND);
-        deleteWrapper.setCursor(Cursor.HAND);
-        ImageView code = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/login.png"))));
-        StackPane codeWrapper = new StackPane(code);
-        codeWrapper.setPrefSize(30, 30);
-        codeWrapper.setCursor(Cursor.HAND);
-        codeWrapper.setOnMouseClicked(e -> setCenter(new LoginGen(this, selectedSchemaName, table)));
+
+        Label hamburger = new Label("☰");
+        hamburger.setTextFill(Color.WHITE);
+        hamburger.setFont(Font.font("System", FontWeight.BOLD, 18));
+        hamburger.setCursor(Cursor.HAND);
+        hamburger.setPadding(new Insets(0, 4, 0, 4));
+
+        ContextMenu menu = new ContextMenu();
+        menu.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 8;" +
+                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.18), 10, 0, 0, 3);" +
+                "-fx-selection-bar: #EAEAEA;" +
+                "-fx-selection-bar-text: #333333;");
 
 
-        crudWrapper.setOnMouseClicked(e -> {
-            setCenter(new TableCRUD(this, selectedSchemaName, table));
+        MenuItem showDataItem  = makeMenuItem("Show Data");
+        MenuItem crudItem = makeMenuItem("CRUD Operations");
+        MenuItem codeItem = makeMenuItem("Generate Login Code");
+        MenuItem editItem = makeMenuItem("Edit Table");
+        MenuItem deleteItem = makeMenuItem("Delete Table");
+        deleteItem.setStyle(deleteItem.getStyle() + "-fx-text-fill: #c0392b;");
+
+
+        menu.getItems().addAll(showDataItem, crudItem, codeItem, new SeparatorMenuItem(), editItem, deleteItem);
+
+        hamburger.setOnMouseClicked(e -> {
+            menu.show(hamburger, javafx.geometry.Side.BOTTOM, 0, 4);
+            e.consume();
         });
 
+        showDataItem.setOnAction(e -> showTableData(selectedSchemaName, table));
 
-        editWrapper.setOnMouseClicked(e -> {
+        crudItem.setOnAction(e -> setCenter(new TableCRUD(this, selectedSchemaName, table)));
 
-            // Build sibling-table PK list for the FK reference dropdowns
+        codeItem.setOnAction(e -> setCenter(new LoginGen(this, selectedSchemaName, table)));
+
+        editItem.setOnAction(e -> {
             Schema fullSchema = db.GetTablesInSchema(selectedSchemaName);
             List<String> pks = new ArrayList<>();
             for (Table t : fullSchema.getTables()) {
@@ -306,12 +316,10 @@ public class SchemasRoot extends BorderPane {
                     }
                 }
             }
-
             setCenter(new TableEdit(this, selectedSchemaName, table, pks));
         });
 
-        deleteWrapper.setOnMouseClicked(e -> {
-
+        deleteItem.setOnAction(e -> {
             Dialog<ButtonType> dialog = new Dialog<>();
             dialog.setTitle("Delete Table");
             dialog.setHeaderText(null);
@@ -319,11 +327,11 @@ public class SchemasRoot extends BorderPane {
             ButtonType deleteButtonType = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(deleteButtonType, ButtonType.CANCEL);
 
-            Label header = new Label("Delete Table");
-            header.setTextFill(Color.WHITE);
-            header.setFont(Font.font("System", FontWeight.BOLD, 14));
+            Label headerLabel = new Label("Delete Table");
+            headerLabel.setTextFill(Color.WHITE);
+            headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
 
-            HBox headerBox = new HBox(header);
+            HBox headerBox = new HBox(headerLabel);
             headerBox.setPadding(new Insets(10, 12, 10, 12));
             headerBox.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
 
@@ -376,18 +384,17 @@ public class SchemasRoot extends BorderPane {
             if (result.isPresent() && result.get() == deleteButtonType) {
                 db.deleteTable(new Schema(selectedSchemaName), table);
                 createTables();
-                System.out.println("Table " + table.getName() + " deleted successfully.");
             }
         });
 
-        HBox imageBox = new HBox(codeWrapper, crudWrapper, editWrapper, deleteWrapper);
-        imageBox.setAlignment(Pos.CENTER_RIGHT);
         Label title = new Label(table.getName());
         title.setTextFill(Color.WHITE);
         title.setFont(Font.font("System", FontWeight.BOLD, 13));
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox header = new HBox(title, spacer, imageBox);
+
+        HBox header = new HBox(title, spacer, hamburger);
         header.setPadding(new Insets(8, 12, 8, 12));
         header.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
         header.setAlignment(Pos.CENTER_LEFT);
@@ -411,23 +418,15 @@ public class SchemasRoot extends BorderPane {
             card.getChildren().add(row);
         }
 
-
-        Label showDataLabel = new Label("Show Data");
-        showDataLabel.setTextFill(Color.WHITE);
-        showDataLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
-
-        HBox dataFooter = new HBox(showDataLabel);
-        dataFooter.setAlignment(Pos.CENTER);
-        dataFooter.setPadding(new Insets(8, 12, 8, 12));
-        dataFooter.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 0 0 10 10; -fx-cursor: hand;");
-        dataFooter.setOnMouseClicked(e -> {
-            e.consume();
-            showTableData(selectedSchemaName, table);
-        });
-        card.getChildren().add(dataFooter);
-
         cardNodeMap.put(table.getName(), card);
         return card;
+    }
+
+    // Helper to create consistently styled menu items
+    private MenuItem makeMenuItem(String text) {
+        MenuItem item = new MenuItem(text);
+        item.setStyle("-fx-font-size: 12px; -fx-padding: 6 12 6 12;");
+        return item;
     }
 
     private void showTableData(String schemaName, Table table) {

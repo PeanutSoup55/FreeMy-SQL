@@ -134,7 +134,9 @@ public class Root extends BorderPane {
         VBox info = new VBox(3);
         Text name = new Text(user != null ? user : "");
         name.setStyle("-fx-font-weight: bold; -fx-fill: #333;");
-        Text urlText = new Text(url != null ? url : "");
+        String rawUrl = (url != null) ? url : "";
+        String limitedUrl = (rawUrl.length() > 20) ? rawUrl.substring(0, 20) + "..." : rawUrl;
+        Text urlText = new Text(limitedUrl);
         urlText.setStyle("-fx-fill: gray; -fx-font-size: 10px;");
         info.getChildren().addAll(name, urlText);
         info.setAlignment(Pos.CENTER_LEFT);
