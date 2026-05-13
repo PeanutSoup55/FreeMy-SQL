@@ -14,6 +14,9 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class LoginGen extends VBox {
@@ -25,6 +28,8 @@ public class LoginGen extends VBox {
     private ComboBox<String> identifierBox;
     private ComboBox<String> passwordBox;
     private TextArea codeArea;
+    private TextArea bcryptArea;
+    private TabPane tabPane;
 
     public LoginGen(SchemasRoot root, String schemaName, Table table) {
         this.root = root;
@@ -47,7 +52,6 @@ public class LoginGen extends VBox {
         Text title = new Text("Login Generator");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
         title.setFill(Color.web("#1E3D30"));
-
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -138,11 +142,6 @@ public class LoginGen extends VBox {
         outputTitle.setTextFill(Color.web("#1E3D30"));
 
         Button copyBtn = outlineBtn("⎘  Copy");
-        copyBtn.setOnAction(e -> {
-            ClipboardContent cc = new ClipboardContent();
-            cc.putString(codeArea.getText());
-            Clipboard.getSystemClipboard().setContent(cc);
-        });
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -154,29 +153,121 @@ public class LoginGen extends VBox {
                 "-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
 
         Font monoFont = Font.font("Courier New", 12);
+        String darkAreaStyle =
+                "-fx-control-inner-background: #1E1E2E;" +
+                        "-fx-text-fill: #CDD6F4;" +
+                        "-fx-prompt-text-fill: #6B7099;" +
+                        "-fx-highlight-fill: #2E5A47;" +
+                        "-fx-font-family: 'Courier New';" +
+                        "-fx-font-size: 12;";
 
+        // --- Tab 1: Generated Code ---
         codeArea = new TextArea();
         codeArea.setFont(monoFont);
         codeArea.setEditable(false);
         codeArea.setWrapText(false);
         codeArea.setPromptText("Press Generate to produce code.");
-        codeArea.setStyle(
-                "-fx-control-inner-background: #1E1E2E;" +
-                        "-fx-text-fill: #CDD6F4;" +
-                        "-fx-highlight-fill: #2E5A47;" +
-                        "-fx-font-family: 'Courier New';" +
-                        "-fx-font-size: 12;");
-
+        codeArea.setStyle(darkAreaStyle);
         codeArea.textProperty().addListener((obs, old, nw) -> {
             if (!monoFont.equals(codeArea.getFont())) codeArea.setFont(monoFont);
         });
 
-        VBox.setVgrow(codeArea, Priority.ALWAYS);
+        Tab codeTab = new Tab("Generated Code", codeArea);
+        codeTab.setClosable(false);
 
-        VBox panel = new VBox(0, topBar, codeArea);
+        // --- Tab 2: BCrypt.txt ---
+        bcryptArea = new TextArea();
+        bcryptArea.setFont(monoFont);
+        bcryptArea.setEditable(false);
+        bcryptArea.setWrapText(false);
+        bcryptArea.setStyle(darkAreaStyle);
+        bcryptArea.setText(loadBCryptFile());
+
+        Tab bcryptTab = new Tab("BCrypt.java", bcryptArea);
+        bcryptTab.setClosable(false);
+
+        // --- TabPane ---
+        tabPane = new TabPane(codeTab, bcryptTab);
+        VBox.setVgrow(tabPane, Priority.ALWAYS);
+        tabPane.setTabMinWidth(100);
+        // Dark tab header to blend with the code area background
+        tabPane.setStyle(
+                "-fx-background-color: #1E1E2E;" +
+                        "-fx-tab-min-height: 32;" +
+                        "-fx-open-tab-animation: NONE;" +
+                        "-fx-close-tab-animation: NONE;" +
+                        "-fx-focus-color: transparent;" +
+                        "-fx-faint-focus-color: transparent;"
+        );
+        tabPane.getStylesheets().add(
+                "data:text/css," +
+                        ".tab-pane > .tab-header-area > .headers-region > .tab {" +
+                        "    -fx-background-color: #2A2A3E;" +
+                        "    -fx-background-radius: 6 6 0 0;" +
+                        "    -fx-padding: 4 14;" +
+                        "}" +
+                        ".tab-pane > .tab-header-area > .headers-region > .tab:selected {" +
+                        "    -fx-background-color: #1E1E2E;" +
+                        "}" +
+                        ".tab-pane > .tab-header-area > .headers-region > .tab .tab-label {" +
+                        "    -fx-text-fill: #888aaa;" +
+                        "    -fx-font-family: 'System';" +
+                        "    -fx-font-weight: bold;" +
+                        "    -fx-font-size: 12;" +
+                        "}" +
+                        ".tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {" +
+                        "    -fx-text-fill: #CDD6F4;" +
+                        "}" +
+                        ".tab-pane > .tab-header-area {" +
+                        "    -fx-background-color: #2A2A3E;" +
+                        "    -fx-padding: 6 0 0 6;" +
+                        "}" +
+                        ".tab-pane > .tab-content-area {" +
+                        "    -fx-background-color: #1E1E2E;" +
+                        "    -fx-padding: 0;" +
+                        "}"
+        );
+
+        // Copy button copies from whichever tab is active
+        copyBtn.setOnAction(e -> {
+            ClipboardContent cc = new ClipboardContent();
+            Tab selected = tabPane.getSelectionModel().getSelectedItem();
+            cc.putString(selected == bcryptTab ? bcryptArea.getText() : codeArea.getText());
+            Clipboard.getSystemClipboard().setContent(cc);
+        });
+
+        VBox panel = new VBox(0, topBar, tabPane);
         VBox.setVgrow(panel, Priority.ALWAYS);
         panel.setStyle("-fx-background-color: #1E1E2E;");
         return panel;
+    }
+
+
+    /**
+     * Reads BCrypt.txt from the same directory as the running JAR/classes.
+     * Falls back to the process working directory, then the classpath.
+     */
+    private String loadBCryptFile() {
+        // 1. Same package as LoginGen.class — works after IntelliJ copies resources to output
+        for (String name : new String[]{"BCrypt.txt", "BCrypt"}) {
+            try (java.io.InputStream is = LoginGen.class.getResourceAsStream(name)) {
+                if (is != null)
+                    return new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception ignored) {}
+        }
+
+        // 2. Fallback: working directory (beside the JAR)
+        for (String name : new String[]{"BCrypt.txt", "BCrypt"}) {
+            try {
+                java.nio.file.Path p = java.nio.file.Paths.get(name);
+                if (java.nio.file.Files.exists(p))
+                    return java.nio.file.Files.readString(p);
+            } catch (Exception ignored) {}
+        }
+
+        return "// BCrypt file not found.\n" +
+                "// Ensure BCrypt.txt is in GUI/Schemas/LoginGen/\n" +
+                "// and add '?*.txt' to Settings > Build > Compiler > Resource patterns.";
     }
 
 
@@ -197,6 +288,7 @@ public class LoginGen extends VBox {
             return;
         }
         codeArea.setText(buildCode(id, pw));
+        tabPane.getSelectionModel().select(0);
     }
 
     private String buildCode(String id, String pw) {
