@@ -1,5 +1,6 @@
-package GUI.Schemas;
+package GUI.Schemas.LoginGen;
 
+import GUI.Schemas.SchemasRoot;
 import Objects.Field;
 import Objects.Table;
 import javafx.geometry.Insets;
@@ -18,17 +19,17 @@ import java.util.*;
 public class LoginGen extends VBox {
 
     private final SchemasRoot root;
-    private final String      schemaName;
-    private final Table       table;
+    private final String schemaName;
+    private final Table table;
 
     private ComboBox<String> identifierBox;
     private ComboBox<String> passwordBox;
-    private TextArea         codeArea;
+    private TextArea codeArea;
 
     public LoginGen(SchemasRoot root, String schemaName, Table table) {
-        this.root       = root;
+        this.root = root;
         this.schemaName = schemaName;
-        this.table      = table;
+        this.table = table;
 
         setSpacing(0);
         setStyle("-fx-background-color: #F2F4F2;");
@@ -36,7 +37,6 @@ public class LoginGen extends VBox {
         getChildren().addAll(buildHeader(), buildBody());
     }
 
-    // ── Header ────────────────────────────────────────────────────────────
 
     private HBox buildHeader() {
         Button backBtn = new Button("← Back");
@@ -48,23 +48,18 @@ public class LoginGen extends VBox {
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
         title.setFill(Color.web("#1E3D30"));
 
-        Label badge = new Label(schemaName + "  ›  " + table.getName());
-        badge.setStyle("-fx-background-color: #E9F5E8; -fx-text-fill: #2E5A47;" +
-                "-fx-background-radius: 6; -fx-padding: 4 10;" +
-                "-fx-font-weight: bold; -fx-font-size: 11;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox header = new HBox(14, backBtn, title, badge, spacer);
+        HBox header = new HBox(14, backBtn, title, spacer);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(18, 24, 14, 24));
-        header.setStyle("-fx-background-color: white;" +
+        header.setStyle("-fx-background-color: transparent;" +
                 "-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
         return header;
     }
 
-    // ── Body ──────────────────────────────────────────────────────────────
 
     private SplitPane buildBody() {
         SplitPane split = new SplitPane();
@@ -75,7 +70,6 @@ public class LoginGen extends VBox {
         return split;
     }
 
-    // ── Left config ───────────────────────────────────────────────────────
 
     private VBox buildConfig() {
         Label configTitle = new Label("Configuration");
@@ -95,7 +89,6 @@ public class LoginGen extends VBox {
         autoSelect(identifierBox, fieldNames, List.of("email", "username", "name", "user"));
         autoSelect(passwordBox,   fieldNames, List.of("password", "pass", "pwd", "hash"));
 
-        // Fields list
         VBox fieldsList = new VBox(4);
         fieldsList.setPadding(new Insets(10));
         fieldsList.setStyle("-fx-background-color: #F8FAF8; -fx-background-radius: 6;" +
@@ -104,7 +97,7 @@ public class LoginGen extends VBox {
             boolean isFk = f.getReference() != null && !f.getReference().isEmpty();
             String  tag  = f.isPrimary() ? " [PK]" : isFk ? " [FK]" : "";
             Label   lbl  = new Label(f.getName() + "  " + f.getType() + tag);
-            lbl.setFont(Font.font("Monospace", 11));
+            lbl.setFont(Font.font("Courier New", 11));
             lbl.setTextFill(f.isPrimary() ? Color.web("#2E5A47")
                     : isFk          ? Color.web("#8B5E3C")
                     :                 Color.web("#444444"));
@@ -138,7 +131,6 @@ public class LoginGen extends VBox {
         return panel;
     }
 
-    // ── Right output ──────────────────────────────────────────────────────
 
     private VBox buildOutput() {
         Label outputTitle = new Label("Generated Code");
@@ -161,8 +153,10 @@ public class LoginGen extends VBox {
         topBar.setStyle("-fx-background-color: white;" +
                 "-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
 
+        Font monoFont = Font.font("Courier New", 12);
+
         codeArea = new TextArea();
-        codeArea.setFont(Font.font("Monospace", 12));
+        codeArea.setFont(monoFont);
         codeArea.setEditable(false);
         codeArea.setWrapText(false);
         codeArea.setPromptText("Press Generate to produce code.");
@@ -170,7 +164,13 @@ public class LoginGen extends VBox {
                 "-fx-control-inner-background: #1E1E2E;" +
                         "-fx-text-fill: #CDD6F4;" +
                         "-fx-highlight-fill: #2E5A47;" +
+                        "-fx-font-family: 'Courier New';" +
                         "-fx-font-size: 12;");
+
+        codeArea.textProperty().addListener((obs, old, nw) -> {
+            if (!monoFont.equals(codeArea.getFont())) codeArea.setFont(monoFont);
+        });
+
         VBox.setVgrow(codeArea, Priority.ALWAYS);
 
         VBox panel = new VBox(0, topBar, codeArea);
@@ -179,7 +179,6 @@ public class LoginGen extends VBox {
         return panel;
     }
 
-    // ── Generator ─────────────────────────────────────────────────────────
 
     private void generate() {
         String id = identifierBox.getValue();
@@ -201,87 +200,94 @@ public class LoginGen extends VBox {
     }
 
     private String buildCode(String id, String pw) {
-        // Collect non-PK, non-id, non-pw fields for the User record
-        StringBuilder userFields   = new StringBuilder();
-        StringBuilder scanArgs     = new StringBuilder();
-        StringBuilder selectCols   = new StringBuilder();
-
         List<Field> returnFields = new ArrayList<>();
         for (Field f : table.getFields()) {
             if (f.isPrimary() || f.getName().equals(pw)) continue;
             returnFields.add(f);
         }
 
-        // SELECT: id col, identifier col, rest — password intentionally excluded
-        selectCols.append("`").append(getpk()).append("`");
-        selectCols.append(", `").append(id).append("`");
-        for (Field f : returnFields) {
-            if (!f.getName().equals(id))
-                selectCols.append(", `").append(f.getName()).append("`");
+        StringBuilder userFields = new StringBuilder();
+        for (Field f : returnFields)
+            userFields.append("    private final ")
+                    .append(sqlToJava(f.getType())).append(" ").append(f.getName()).append(";\n");
+
+        StringBuilder ctorParams = new StringBuilder();
+        StringBuilder ctorAssign = new StringBuilder();
+        for (int i = 0; i < returnFields.size(); i++) {
+            Field f = returnFields.get(i);
+            if (i > 0) ctorParams.append(", ");
+            ctorParams.append(sqlToJava(f.getType())).append(" ").append(f.getName());
+            ctorAssign.append("        this.").append(f.getName())
+                    .append(" = ").append(f.getName()).append(";\n");
         }
-        // password is fetched separately for verify, then discarded
+
+        StringBuilder getters = new StringBuilder();
+        for (Field f : returnFields)
+            getters.append("    public ").append(sqlToJava(f.getType()))
+                    .append(" get").append(cap(f.getName()))
+                    .append("() { return ").append(f.getName()).append("; }\n");
+
+        StringBuilder detailsBody = new StringBuilder();
+        for (int i = 0; i < returnFields.size(); i++) {
+            Field f = returnFields.get(i);
+            if (i == 0)
+                detailsBody.append("\"").append(cap(f.getName())).append(": \" + ").append(f.getName());
+            else
+                detailsBody.append(" + \"\\n").append(cap(f.getName())).append(": \" + ").append(f.getName());
+        }
+
+        StringBuilder selectCols = new StringBuilder();
+        selectCols.append("`").append(getpk()).append("`");
+        for (Field f : returnFields)
+            selectCols.append(", `").append(f.getName()).append("`");
         selectCols.append(", `").append(pw).append("`");
 
-        // User record fields
-        userFields.append("    private final String ").append(id).append(";\n");
-        for (Field f : returnFields) {
-            if (!f.getName().equals(id))
-                userFields.append("    private final ")
-                        .append(sqlToJava(f.getType())).append(" ")
-                        .append(f.getName()).append(";\n");
+        StringBuilder scanArgs = new StringBuilder();
+        for (int i = 0; i < returnFields.size(); i++) {
+            Field f = returnFields.get(i);
+            if (i > 0) scanArgs.append(",\n                    ");
+            scanArgs.append(rsGetter(f.getType())).append("(\"").append(f.getName()).append("\")");
         }
 
-        // Scan args match SELECT order
-        scanArgs.append("rs.getString(\"").append(id).append("\")");
+        StringBuilder makeParams  = new StringBuilder();
+        StringBuilder makeInsert  = new StringBuilder();
+        StringBuilder makeValues  = new StringBuilder();
+        StringBuilder makeSetters = new StringBuilder();
+        int paramIdx = 1;
         for (Field f : returnFields) {
-            if (!f.getName().equals(id))
-                scanArgs.append(",\n                    ")
-                        .append(rsGetter(f.getType())).append("(\"").append(f.getName()).append("\")");
+            if (makeParams.length() > 0) makeParams.append(", ");
+            makeParams.append(sqlToJava(f.getType())).append(" ").append(f.getName());
+            if (makeInsert.length() > 0) { makeInsert.append(", "); makeValues.append(", "); }
+            makeInsert.append("`").append(f.getName()).append("`");
+            makeValues.append("?");
+            makeSetters.append("            ps.").append(psSetter(f.getType()))
+                    .append("(").append(paramIdx++).append(", ").append(f.getName()).append(");\n");
         }
+        makeParams.append(", String password");
+        makeInsert.append(", `").append(pw).append("`");
+        makeValues.append(", ?");
+        makeSetters.append("            ps.setString(").append(paramIdx).append(", hashedPassword);\n");
 
-        // Constructor params
-        StringBuilder ctorParams = new StringBuilder("String " + id);
-        StringBuilder ctorAssign = new StringBuilder("        this." + id + " = " + id + ";\n");
-        for (Field f : returnFields) {
-            if (!f.getName().equals(id)) {
-                ctorParams.append(", ").append(sqlToJava(f.getType())).append(" ").append(f.getName());
-                ctorAssign.append("        this.").append(f.getName())
-                        .append(" = ").append(f.getName()).append(";\n");
-            }
-        }
-
-        // Getters
-        StringBuilder getters = new StringBuilder();
-        getters.append("    public String get").append(cap(id)).append("() { return ").append(id).append("; }\n");
-        for (Field f : returnFields) {
-            if (!f.getName().equals(id))
-                getters.append("    public ").append(sqlToJava(f.getType()))
-                        .append(" get").append(cap(f.getName()))
-                        .append("() { return ").append(f.getName()).append("; }\n");
-        }
+        String tbl = "`" + schemaName + "`.`" + table.getName() + "`";
 
         return
-                "import globalfuncs.creds;\n" +
-                        "import org.mindrot.jbcrypt.BCrypt;\n" +
+                "import org.mindrot.jbcrypt.BCrypt;\n" +
                         "import java.sql.*;\n" +
-                        "\n" +
                         "// Requires: org.mindrot:jbcrypt:0.4 in your build file\n" +
-                        "\n" +
                         "public class Auth {\n" +
-                        "\n" +
                         "    public static class User {\n" +
                         userFields +
-                        "\n" +
                         "        public User(" + ctorParams + ") {\n" +
                         ctorAssign +
                         "        }\n" +
-                        "\n" +
                         getters +
+                        "        public String details(){\n" +
+                        "            return " + detailsBody + ";\n" +
+                        "        }\n" +
                         "    }\n" +
-                        "\n" +
                         "    public static User login(String " + id + ", String plainPassword) throws SQLException {\n" +
-                        "        String sql = \"SELECT " + selectCols + " FROM `" + schemaName + "`.`" + table.getName() + "` WHERE `" + id + "` = ? LIMIT 1\";\n" +
-                        "        try (Connection conn = DriverManager.getConnection(creds.getUrl(), creds.getUser(), creds.getPass());\n" +
+                        "        String sql = \"SELECT " + selectCols + " FROM " + tbl + " WHERE `" + id + "` = ? LIMIT 1\";\n" +
+                        "        try (Connection conn = DriverManager.getConnection(Creds.getURL(), Creds.getUSER(), Creds.getPASS());\n" +
                         "             PreparedStatement ps = conn.prepareStatement(sql)) {\n" +
                         "            ps.setString(1, " + id + ");\n" +
                         "            ResultSet rs = ps.executeQuery();\n" +
@@ -293,14 +299,44 @@ public class LoginGen extends VBox {
                         "            );\n" +
                         "        }\n" +
                         "    }\n" +
-                        "\n" +
+                        "    public static void MakeUser(" + makeParams + ") throws SQLException {\n" +
+                        "        String query = \"INSERT INTO " + tbl + " (" + makeInsert + ") VALUES (" + makeValues + ")\";\n" +
+                        "        String hashedPassword = hashPassword(password);\n" +
+                        "        try (Connection conn = DriverManager.getConnection(Creds.getURL(), Creds.getUSER(), Creds.getPASS()); PreparedStatement ps = conn.prepareStatement(query)) {\n" +
+                        makeSetters +
+                        "            ps.executeUpdate();\n" +
+                        "        }\n" +
+                        "    }\n" +
                         "    public static String hashPassword(String plain) {\n" +
                         "        return BCrypt.hashpw(plain, BCrypt.gensalt(12));\n" +
+                        "    }\n" +
+                        "}\n" +
+                        "\n" +
+                        "public class Creds {\n" +
+                        "    private static String USER = \"root\";\n" +
+                        "    private static String PASS = \"yourPassword\";\n" +
+                        "    private static String URL = \"jdbc:mysql://localhost:3306/" + schemaName + "\";\n" +
+                        "    public static String getUSER() {\n" +
+                        "        return USER;\n" +
+                        "    }\n" +
+                        "    public static void setUSER(String USER) {\n" +
+                        "        Creds.USER = USER;\n" +
+                        "    }\n" +
+                        "    public static String getPASS() {\n" +
+                        "        return PASS;\n" +
+                        "    }\n" +
+                        "    public static void setPASS(String PASS) {\n" +
+                        "        Creds.PASS = PASS;\n" +
+                        "    }\n" +
+                        "    public static String getURL() {\n" +
+                        "        return URL;\n" +
+                        "    }\n" +
+                        "    public static void setURL(String URL) {\n" +
+                        "        Creds.URL = URL;\n" +
                         "    }\n" +
                         "}\n";
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private String getpk() {
         for (Field f : table.getFields()) if (f.isPrimary()) return f.getName();
@@ -327,6 +363,17 @@ public class LoginGen extends VBox {
         if (t.contains("DECIMAL")) return "rs.getBigDecimal";
         if (t.contains("BOOL"))    return "rs.getBoolean";
         return "rs.getString";
+    }
+
+    private static String psSetter(String sql) {
+        String t = sql.toUpperCase();
+        if (t.contains("BIGINT"))  return "setLong";
+        if (t.contains("INT"))     return "setInt";
+        if (t.contains("DOUBLE") || t.contains("FLOAT")) return "setDouble";
+        if (t.contains("DECIMAL")) return "setBigDecimal";
+        if (t.contains("BOOL"))    return "setBoolean";
+        if (t.contains("DATE"))    return "setDate";
+        return "setString";
     }
 
     private static String cap(String s) {

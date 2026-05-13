@@ -1,4 +1,5 @@
 package GUI.Schemas;
+import GUI.Schemas.LoginGen.LoginGen;
 import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
