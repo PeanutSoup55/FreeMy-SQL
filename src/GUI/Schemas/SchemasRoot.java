@@ -235,22 +235,27 @@ public class SchemasRoot extends BorderPane {
         // StackPane: canvas below, overlay above
         StackPane stackPane = new StackPane(canvas, overlay);
 
-        // Lay cards out in a grid initially
-        int perRow  = 4;
-        double hGap = 260, vGap = 280;
-        double originX = 30, originY = 30;
-        int i = 0;
+        //Map<String, double[]> layout = computeTopologyLayout(schema.getTables(), foreignKeys); // approach 1
+        Map<String, double[]> layout = computeForceLayout(schema.getTables(), foreignKeys); // approach 2
+        separateCards(layout, schema.getTables());
 
+        int i = 0;
         for (Table table : schema.getTables()) {
             VBox card = buildCard(table);
+
             double[] saved = loadPosition(selectedSchema, table.getName());
             if (saved != null) {
+                // User-saved positions: restore as-is (user chose that placement)
                 card.setLayoutX(saved[0]);
                 card.setLayoutY(saved[1]);
             } else {
-                card.setLayoutX(originX + (i % perRow) * hGap);
-                card.setLayoutY(originY + ((double) i / perRow) * vGap);
+                // Fresh layout: use the separated computed positions
+                double[] computed = layout.getOrDefault(table.getName(),
+                        new double[]{20 + (i % 4) * 260.0, 20 + (i / 4) * 280.0});
+                card.setLayoutX(computed[0]);
+                card.setLayoutY(computed[1]);
             }
+
             makeDraggable(card, overlay, foreignKeys, stackPane, selectedSchema, table.getName());
             canvas.getChildren().add(card);
             i++;
@@ -599,52 +604,39 @@ public class SchemasRoot extends BorderPane {
             VBox pkCard = cardNodeMap.get(fk[2]);
             if (fkRow == null || pkRow == null || fkCard == null || pkCard == null) continue;
 
-            Bounds fkRowB  = stack.sceneToLocal(fkRow .localToScene(fkRow .getBoundsInLocal()));
-            Bounds pkRowB  = stack.sceneToLocal(pkRow .localToScene(pkRow .getBoundsInLocal()));
-            Bounds fkCardB = stack.sceneToLocal(fkCard.localToScene(fkCard.getBoundsInLocal()));
-            Bounds pkCardB = stack.sceneToLocal(pkCard.localToScene(pkCard.getBoundsInLocal()));
+            Bounds fkRowB = stack.sceneToLocal(fkRow.localToScene(fkRow.getBoundsInLocal()));
+            Bounds pkRowB = stack.sceneToLocal(pkRow.localToScene(pkRow.getBoundsInLocal()));
+            Bounds fcB    = stack.sceneToLocal(fkCard.localToScene(fkCard.getBoundsInLocal()));
+            Bounds pcB    = stack.sceneToLocal(pkCard.localToScene(pkCard.getBoundsInLocal()));
 
-            // Self-referencing FK → small loop on the right side of the card
-            if (fkCard == pkCard) {
-                drawSelfLoop(overlay, fkCardB, fkRowB, pkRowB);
-                continue;
-            }
+            if (fkCard == pkCard) { drawSelfLoop(overlay, fcB, fkRowB, pkRowB); continue; }
 
-            // Choose exit / entry edges based on horizontal relationship
-            boolean fkIsLeft = fkCardB.getCenterX() <= pkCardB.getCenterX();
-            double sx = fkIsLeft ? fkCardB.getMaxX() : fkCardB.getMinX();
-            double sy = fkRowB.getCenterY();
-            double ex = fkIsLeft ? pkCardB.getMinX() : pkCardB.getMaxX();
-            double ey = pkRowB.getCenterY();
+            // 4-sided port selection
+            double[] pts = portPoints(fcB, pcB, fkRowB.getCenterY(), pkRowB.getCenterY());
+            double sx=pts[0], sy=pts[1], ex=pts[2], ey=pts[3];
+            double sdx=pts[4], sdy=pts[5], edx=pts[6], edy=pts[7];
 
-            // Control-point tension: at least 80 px, scales with distance
-            double tension = Math.max(Math.abs(ex - sx) * 0.45, 80);
-            double cp1x = fkIsLeft ? sx + tension : sx - tension;
-            double cp1y = sy;
-            double cp2x = fkIsLeft ? ex - tension : ex + tension;
-            double cp2y = ey;
+            // Control points tangent to exit/entry direction
+            double d = Math.max(Math.hypot(ex-sx, ey-sy) * 0.45, 70);
+            double cp1x=sx+sdx*d, cp1y=sy+sdy*d;
+            double cp2x=ex+edx*d, cp2y=ey+edy*d;
 
-            // Collision avoidance: push control points to route around blocking cards
-            double[] cps = avoidCollisions(sx, sy, cp1x, cp1y, cp2x, cp2y, ex, ey,
-                    fkCard, pkCard, stack);
-            cp1x = cps[0]; cp1y = cps[1];
-            cp2x = cps[2]; cp2y = cps[3];
+            // Obstacle avoidance along the correct axis
+            double[] r = routeAround(sx,sy,cp1x,cp1y,cp2x,cp2y,ex,ey,
+                    sdx,sdy, fkCard,pkCard,stack);
+            cp1x=r[0]; cp1y=r[1]; cp2x=r[2]; cp2y=r[3];
 
-            CubicCurve curve = new CubicCurve(sx, sy, cp1x, cp1y, cp2x, cp2y, ex, ey);
+            CubicCurve curve = new CubicCurve(sx,sy,cp1x,cp1y,cp2x,cp2y,ex,ey);
             curve.setStroke(Color.web("#2E5A47"));
             curve.setStrokeWidth(1.8);
             curve.setFill(Color.TRANSPARENT);
 
-            // Filled dot at FK (many) end
             Circle dot = new Circle(sx, sy, 4.5, Color.web("#2E5A47"));
             dot.setStroke(Color.WHITE);
             dot.setStrokeWidth(1.2);
 
-            // Tangent-aligned arrowhead at PK (one) end
-            double angle = Math.atan2(ey - cp2y, ex - cp2x);
-            Polygon arrow = buildArrow(ex, ey, angle);
-
-            overlay.getChildren().addAll(curve, dot, arrow);
+            double angle = Math.atan2(ey-cp2y, ex-cp2x);
+            overlay.getChildren().addAll(curve, dot, buildArrow(ex, ey, angle));
         }
     }
 
@@ -669,57 +661,153 @@ public class SchemasRoot extends BorderPane {
         overlay.getChildren().addAll(loop, dot, buildArrow(ex, ey, angle));
     }
 
-    private double[] avoidCollisions(
-            double sx, double sy,
-            double cp1x, double cp1y,
-            double cp2x, double cp2y,
-            double ex, double ey,
-            VBox fkCard, VBox pkCard, StackPane stack) {
+    private double estimateCardHeight(String tableName, List<Table> tables) {
+        for (Table t : tables) {
+            if (t.getName().equals(tableName)) {
+                return 36 + t.getFields().size() * 31 + 4; // header + rows + padding
+            }
+        }
+        return 160;
+    }
 
-        final int SAMPLES = 28;
-        final double MARGIN = 8.0;    // extra padding around each card box
+    private void separateCards(Map<String, double[]> positions, List<Table> tables) {
+        final double CARD_W  = 230;
+        final double MIN_GAP = 30;
 
-        double maxPenetration = 0;
-        double pushDir = 0;     // +1 → push down, -1 → push up
+        List<String> names = new ArrayList<>(positions.keySet());
 
-        for (VBox card : cardNodeMap.values()) {
-            if (card == fkCard || card == pkCard) continue;
+        for (int iter = 0; iter < 300; iter++) {
+            boolean moved = false;
+            for (int i = 0; i < names.size(); i++) {
+                for (int j = i + 1; j < names.size(); j++) {
+                    double[] pa = positions.get(names.get(i));
+                    double[] pb = positions.get(names.get(j));
+                    double   ha = estimateCardHeight(names.get(i), tables);
+                    double   hb = estimateCardHeight(names.get(j), tables);
 
-            Bounds b = stack.sceneToLocal(card.localToScene(card.getBoundsInLocal()));
-            double minX = b.getMinX() - MARGIN;
-            double maxX = b.getMaxX() + MARGIN;
-            double minY = b.getMinY() - MARGIN;
-            double maxY = b.getMaxY() + MARGIN;
+                    double overlapX = Math.min(pa[0] + CARD_W, pb[0] + CARD_W)
+                            - Math.max(pa[0], pb[0]) + MIN_GAP;
+                    double overlapY = Math.min(pa[1] + ha, pb[1] + hb)
+                            - Math.max(pa[1], pb[1]) + MIN_GAP;
 
-            for (int s = 1; s < SAMPLES; s++) {
-                double t  = (double) s / SAMPLES;
-                double bx = cubic(sx, cp1x, cp2x, ex, t);
-                double by = cubic(sy, cp1y, cp2y, ey, t);
-
-                if (bx > minX && bx < maxX && by > minY && by < maxY) {
-                    // How deep is the sample inside the card vertically?
-                    double pen = (b.getHeight() / 2) + MARGIN
-                            + Math.min(by - minY, maxY - by);
-                    if (pen > maxPenetration) {
-                        maxPenetration = pen;
-                        // Push away from the card's vertical center
-                        pushDir = (by < b.getCenterY()) ? -1.0 : 1.0;
+                    if (overlapX > 0 && overlapY > 0) {
+                        moved = true;
+                        double push;
+                        if (overlapX < overlapY) {
+                            push = overlapX / 2.0 + 1;
+                            if (pa[0] <= pb[0]) { pa[0] -= push; pb[0] += push; }
+                            else                { pa[0] += push; pb[0] -= push; }
+                        } else {
+                            push = overlapY / 2.0 + 1;
+                            if (pa[1] <= pb[1]) { pa[1] -= push; pb[1] += push; }
+                            else                { pa[1] += push; pb[1] -= push; }
+                        }
+                        pa[0] = Math.max(20, pa[0]);
+                        pa[1] = Math.max(20, pa[1]);
+                        pb[0] = Math.max(20, pb[0]);
+                        pb[1] = Math.max(20, pb[1]);
                     }
                 }
             }
+            if (!moved) break;
         }
-
-        if (maxPenetration > 0) {
-            double shift = maxPenetration + 20;
-            cp1y += pushDir * shift;
-            cp2y += pushDir * shift;
-        }
-
-        return new double[]{ cp1x, cp1y, cp2x, cp2y };
     }
 
-    private double cubic(double p0, double p1, double p2, double p3, double t) {
-        double u = 1 - t;
+    private double[] portPoints(Bounds fc, Bounds pc, double fkRowY, double pkRowY) {
+        // Clamp row Y inside its card's header+body range
+        fkRowY = Math.max(fc.getMinY()+18, Math.min(fc.getMaxY()-6, fkRowY));
+        pkRowY = Math.max(pc.getMinY()+18, Math.min(pc.getMaxY()-6, pkRowY));
+
+        double dx = pc.getCenterX() - fc.getCenterX();
+        double dy = pc.getCenterY() - fc.getCenterY();
+
+        double sx, sy, ex, ey, sdx, sdy, edx, edy;
+
+        // Use left/right when connection is more horizontal than vertical (60° threshold)
+        if (Math.abs(dx) >= Math.abs(dy) * 0.58) {
+            if (dx >= 0) {
+                sx=fc.getMaxX(); sy=fkRowY; sdx= 1; sdy=0;
+                ex=pc.getMinX(); ey=pkRowY; edx=-1; edy=0;
+            } else {
+                sx=fc.getMinX(); sy=fkRowY; sdx=-1; sdy=0;
+                ex=pc.getMaxX(); ey=pkRowY; edx= 1; edy=0;
+            }
+        } else {
+            // Use top/bottom when connection is more vertical
+            if (dy >= 0) {
+                sx=fc.getCenterX(); sy=fc.getMaxY(); sdx=0; sdy= 1;
+                ex=pc.getCenterX(); ey=pc.getMinY(); edx=0; edy=-1;
+            } else {
+                sx=fc.getCenterX(); sy=fc.getMinY(); sdx=0; sdy=-1;
+                ex=pc.getCenterX(); ey=pc.getMaxY(); edx=0; edy= 1;
+            }
+        }
+        return new double[]{sx,sy,ex,ey,sdx,sdy,edx,edy};
+    }
+
+    private double[] routeAround(
+            double sx, double sy, double cp1x, double cp1y,
+            double cp2x, double cp2y, double ex, double ey,
+            double exitDx, double exitDy,
+            VBox fkCard, VBox pkCard, StackPane stack) {
+
+        final double MARGIN  = 20.0;
+        final int    SAMPLES = 36;
+        boolean horizontal = Math.abs(exitDx) > Math.abs(exitDy);
+
+        double needPos = 0; // push in positive axis direction
+        double needNeg = 0; // push in negative axis direction
+
+        for (VBox card : cardNodeMap.values()) {
+            if (card == fkCard || card == pkCard) continue;
+            Bounds b = stack.sceneToLocal(card.localToScene(card.getBoundsInLocal()));
+
+            double bx1=b.getMinX()-MARGIN, bx2=b.getMaxX()+MARGIN;
+            double by1=b.getMinY()-MARGIN, by2=b.getMaxY()+MARGIN;
+
+            // Quick AABB pre-cull against the bounding box of the connection
+            double connMinX=Math.min(sx,ex)-80, connMaxX=Math.max(sx,ex)+80;
+            double connMinY=Math.min(sy,ey)-80, connMaxY=Math.max(sy,ey)+80;
+            if (bx2<connMinX || bx1>connMaxX || by2<connMinY || by1>connMaxY) continue;
+
+            // Sample the current bezier for intersections
+            double hitSum = 0; int hits = 0;
+            double maxPen = 0;
+            for (int s=1; s<SAMPLES; s++) {
+                double t  = (double)s / SAMPLES;
+                double bpx = bez(sx,cp1x,cp2x,ex,t);
+                double bpy = bez(sy,cp1y,cp2y,ey,t);
+                if (bpx>=bx1 && bpx<=bx2 && bpy>=by1 && bpy<=by2) {
+                    double pen = horizontal
+                            ? Math.min(bpy-by1, by2-bpy) + MARGIN
+                            : Math.min(bpx-bx1, bx2-bpx) + MARGIN;
+                    maxPen  = Math.max(maxPen, pen);
+                    hitSum += horizontal ? bpy : bpx;
+                    hits++;
+                }
+            }
+            if (hits == 0) continue;
+
+            double avgHit = hitSum / hits;
+            double center = horizontal ? b.getCenterY() : b.getCenterX();
+            double clearance = maxPen + 15;
+
+            if (avgHit <= center) needNeg = Math.max(needNeg, clearance); // push up / left
+            else                  needPos = Math.max(needPos, clearance); // push down / right
+        }
+
+        if (needNeg == 0 && needPos == 0) return new double[]{cp1x,cp1y,cp2x,cp2y};
+
+        // Apply the smaller of the two required shifts
+        double shift = (needNeg <= needPos || needPos == 0) ? -needNeg : needPos;
+        if (horizontal) { cp1y += shift; cp2y += shift; }
+        else            { cp1x += shift; cp2x += shift; }
+
+        return new double[]{cp1x,cp1y,cp2x,cp2y};
+    }
+
+    private double bez(double p0, double p1, double p2, double p3, double t) {
+        double u = 1-t;
         return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3;
     }
 
@@ -758,5 +846,74 @@ public class SchemasRoot extends BorderPane {
         if (val == null) return null;
         String[] parts = val.split(",");
         return new double[]{ Double.parseDouble(parts[0]), Double.parseDouble(parts[1]) };
+    }
+
+    private Map<String, double[]> computeForceLayout(List<Table> tables, List<String[]> foreignKeys) {
+
+        if (tables.isEmpty()) return new LinkedHashMap<>();
+
+        Map<String, double[]> pos = new LinkedHashMap<>();
+        Random rng = new Random(42);
+
+        int n = tables.size();
+        double cx=550, cy=420, radius=Math.max(180, n*38);
+        for (int i=0; i<n; i++) {
+            double angle = 2*Math.PI*i/n;
+            pos.put(tables.get(i).getName(), new double[]{
+                    cx + radius*Math.cos(angle) + rng.nextDouble()*20,
+                    cy + radius*Math.sin(angle) + rng.nextDouble()*20
+            });
+        }
+
+        Set<String> tableNames = new HashSet<>(pos.keySet());
+        List<String> names = new ArrayList<>(tableNames);
+
+        // ↓ Stronger attraction pulls connected tables close; repulsion prevents overlap
+        final double IDEAL   = 300;
+        final double ATTRACT = 0.12;   // was 0.03 — 4× stronger
+        final double REPEL   = 90_000; // was 80,000
+        final int    ITERS   = 500;    // was 350
+
+        for (int iter=0; iter<ITERS; iter++) {
+            Map<String,double[]> forces = new HashMap<>();
+            for (String n2 : names) forces.put(n2, new double[]{0,0});
+
+            // Repulsion
+            for (int i=0; i<names.size(); i++) {
+                for (int j=i+1; j<names.size(); j++) {
+                    String a=names.get(i), b=names.get(j);
+                    double[] pa=pos.get(a), pb=pos.get(b);
+                    double dx=pa[0]-pb[0], dy=pa[1]-pb[1];
+                    double dist=Math.max(Math.hypot(dx,dy),1);
+                    double f=REPEL/(dist*dist);
+                    forces.get(a)[0]+=dx/dist*f; forces.get(a)[1]+=dy/dist*f;
+                    forces.get(b)[0]-=dx/dist*f; forces.get(b)[1]-=dy/dist*f;
+                }
+            }
+
+            // Attraction along FK edges
+            for (String[] fk : foreignKeys) {
+                String a=fk[0], b=fk[2];
+                if (a.equals(b)||!tableNames.contains(a)||!tableNames.contains(b)) continue;
+                double[] pa=pos.get(a), pb=pos.get(b);
+                double dx=pb[0]-pa[0], dy=pb[1]-pa[1];
+                double dist=Math.max(Math.hypot(dx,dy),1);
+                double f=ATTRACT*(dist-IDEAL);
+                forces.get(a)[0]+=dx/dist*f; forces.get(a)[1]+=dy/dist*f;
+                forces.get(b)[0]-=dx/dist*f; forces.get(b)[1]-=dy/dist*f;
+            }
+
+            // Apply with cooling
+            double cool=Math.max(1.0-(double)iter/ITERS, 0.01);
+            double maxStep=55*cool+3;
+            for (String name : names) {
+                double[] f=forces.get(name), p=pos.get(name);
+                double mag=Math.hypot(f[0],f[1]);
+                if (mag>maxStep){f[0]=f[0]/mag*maxStep; f[1]=f[1]/mag*maxStep;}
+                p[0]=Math.max(30,p[0]+f[0]);
+                p[1]=Math.max(30,p[1]+f[1]);
+            }
+        }
+        return pos;
     }
 }
