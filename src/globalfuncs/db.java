@@ -18,40 +18,6 @@ public class db {
         );
     }
 
-    private static final Preferences PREFS = Preferences.userRoot().node("Free_My_SQL/saved_login");
-    private static final String KEY_URL = "server_url";
-    private static final String KEY_USERNAME = "username";
-    private static final String KEY_INITIALS = "user_initials";
-
-    public static void saveLoginDetails(String url, String username, String initials){
-        PREFS.put(KEY_URL, url);
-        PREFS.put(KEY_USERNAME, username);
-        PREFS.put(KEY_INITIALS, initials);
-        try {
-            PREFS.flush();
-        }catch (BackingStoreException e) {
-            System.err.println("failed to save login prefs: " + e.getMessage());
-        }
-    }
-
-    public static String[] loadLoginDetails(){
-        String url = PREFS.get(KEY_URL, "");
-        String username = PREFS.get(KEY_USERNAME, "");
-        String initials = PREFS.get(KEY_INITIALS, "");
-        return new String[]{url, username, initials};
-    }
-
-    public static void clearSavedDetails(){
-        PREFS.remove(KEY_URL);
-        PREFS.remove(KEY_USERNAME);
-        PREFS.remove(KEY_INITIALS);
-        try {
-            PREFS.flush();
-        }catch (BackingStoreException e){
-            System.err.println("failed to remove data: " + e.getMessage());
-        }
-    }
-
     public static List<Schema> Schemas(){
         List<Schema> databases = new ArrayList<>();
         String query = "SHOW DATABASES WHERE `Database` NOT IN ('information_schema','mysql','performance_schema','sys')";
