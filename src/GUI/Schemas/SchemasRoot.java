@@ -1,5 +1,6 @@
 package GUI.Schemas;
 import GUI.Schemas.LoginGen.LoginGen;
+import globalfuncs.creds;
 import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
@@ -30,6 +31,8 @@ public class SchemasRoot extends BorderPane {
     private final TabPane  dataTabPane = new TabPane();
     private SplitPane mainSplit  = null;
     private static final java.util.prefs.Preferences PREFS = java.util.prefs.Preferences.userRoot().node("Free_My_SQL/table_positions");
+    private boolean isRemoteSelected = false;
+    public static List<Schema> remoteSchemas = new ArrayList<>();
 
     public SchemasRoot() {
         createSide();
@@ -44,45 +47,61 @@ public class SchemasRoot extends BorderPane {
                 "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
         BorderPane.setMargin(vBox, new Insets(10));
 
-        Text top = new Text("Schemas");
-        top.setStyle("-fx-font-weight: 600;");
-        top.setTextAlignment(TextAlignment.CENTER);
         Button refreshBtn = new Button("↻");
         refreshBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47;" +
                 "-fx-font-size: 16; -fx-cursor: hand; -fx-padding: 0 4;");
         refreshBtn.setOnAction(e -> refresh());
 
+        // ── Local section ──────────────────────────────────────────
+        Text localHeader = new Text("Local");
+        localHeader.setStyle("-fx-font-weight: 600;");
+
         Region topSpacer = new Region();
         HBox.setHgrow(topSpacer, Priority.ALWAYS);
-
-        HBox topRow = new HBox(top, topSpacer, refreshBtn);
+        HBox topRow = new HBox(localHeader, topSpacer, refreshBtn);
         topRow.setAlignment(Pos.CENTER_LEFT);
         topRow.setPadding(new Insets(0, 0, 4, 0));
 
-        Separator sep = new Separator();
-        sep.setPadding(new Insets(5, 0, 5, 0));
-        List<HBox> tabs = new ArrayList<>();
-        for (Schema schema : schemas) tabs.add(generateTab(schema));
+        Separator sep1 = new Separator();
+        sep1.setPadding(new Insets(5, 0, 5, 0));
+
+        VBox localSection = new VBox(4);
+        for (Schema schema : schemas) localSection.getChildren().add(generateTab(schema, false));
+
+        if (creds.hasRemote()) {
+            remoteSchemas = db.SchemasRemote();
+
+            Separator sep2 = new Separator();
+            sep2.setPadding(new Insets(8, 0, 4, 0));
+
+            Text remoteHeader = new Text("Remote  🔗");
+            remoteHeader.setStyle("-fx-font-weight: 600; -fx-fill: #2E5A47;");
+
+            VBox remoteSection = new VBox(4);
+            for (Schema schema : remoteSchemas) remoteSection.getChildren().add(generateTab(schema, true));
+
+            vBox.getChildren().addAll(topRow, sep1, localSection, sep2, remoteHeader, remoteSection);
+        } else {
+            vBox.getChildren().addAll(topRow, sep1, localSection);
+        }
 
         Region region = new Region();
         VBox.setVgrow(region, Priority.ALWAYS);
+
         HBox makeSchema = new HBox();
-        makeSchema.setPadding(new Insets(15, 15, 15, 15));
+        makeSchema.setPadding(new Insets(15));
         makeSchema.setBackground(new Background(new BackgroundFill(Color.web("#2E5A47"), new CornerRadii(8), Insets.EMPTY)));
         Text makeSchemaLabel = new Text("Make Schema");
         makeSchemaLabel.setFill(Color.WHITE);
-        makeSchemaLabel.setTextAlignment(TextAlignment.CENTER);
         makeSchemaLabel.setStyle("-fx-font-weight: 700;");
         makeSchema.getChildren().add(makeSchemaLabel);
         makeSchema.setOnMouseClicked(e -> setCenter(new SchemasAdd(this)));
 
-        vBox.getChildren().addAll(topRow, sep);
-        vBox.getChildren().addAll(tabs);
         vBox.getChildren().addAll(region, makeSchema);
         setLeft(vBox);
     }
 
-    private HBox generateTab(Schema schema) {
+    private HBox generateTab(Schema schema, boolean remote) {
         HBox hbox = new HBox();
         hbox.setAlignment(Pos.CENTER);
         hbox.setPadding(new Insets(10));
@@ -94,17 +113,19 @@ public class SchemasRoot extends BorderPane {
         text.setTextAlignment(TextAlignment.LEFT);
         text.setStyle("-fx-font-weight: bold;");
 
-        if (selectedTab == null) {
+        if (selectedTab == null && !remote) {
             applySelectedStyle(hbox, text);
             selectedTab = hbox;
-        } else{
+            isRemoteSelected = false;
+        } else {
             applyDefaultStyle(hbox, text);
         }
         hbox.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY){
+            if (e.getButton() == MouseButton.PRIMARY) {
                 if (selectedTab != null) applyDefaultStyle(selectedTab, (Text) selectedTab.getChildren().getFirst());
                 applySelectedStyle(hbox, text);
                 selectedTab = hbox;
+                isRemoteSelected = remote;
                 createTables();
             }else if (e.getButton() == MouseButton.SECONDARY){
                 ContextMenu contextMenu = new ContextMenu();
@@ -221,52 +242,49 @@ public class SchemasRoot extends BorderPane {
         rowNodeMap.clear();
         cardNodeMap.clear();
 
-        String selectedSchema = selectedTab != null ? ((Text) selectedTab.getChildren().getFirst()).getText() : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
+        String selectedSchema = selectedTab != null
+                ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
-        Schema schema = db.GetTablesInSchema(selectedSchema);
-        List<String[]> foreignKeys = db.GetForeignKeys(selectedSchema);
+        // ← Only change: route to remote or local methods
+        Schema schema       = isRemoteSelected
+                ? db.GetTablesInSchemaRemote(selectedSchema)
+                : db.GetTablesInSchema(selectedSchema);
+        List<String[]> foreignKeys = isRemoteSelected
+                ? db.GetForeignKeysRemote(selectedSchema)
+                : db.GetForeignKeys(selectedSchema);
+
         Pane canvas = new Pane();
         canvas.setMinSize(1000, 800);
         Pane overlay = new Pane();
         overlay.setMouseTransparent(true);
         overlay.prefWidthProperty().bind(canvas.widthProperty());
         overlay.prefHeightProperty().bind(canvas.heightProperty());
-
-        // StackPane: canvas below, overlay above
         StackPane stackPane = new StackPane(canvas, overlay);
-
-        //Map<String, double[]> layout = computeTopologyLayout(schema.getTables(), foreignKeys); // approach 1
-        Map<String, double[]> layout = computeForceLayout(schema.getTables(), foreignKeys); // approach 2
+        Map<String, double[]> layout = computeForceLayout(schema.getTables(), foreignKeys);
         separateCards(layout, schema.getTables());
-
         int i = 0;
         for (Table table : schema.getTables()) {
             VBox card = buildCard(table);
-
             double[] saved = loadPosition(selectedSchema, table.getName());
             if (saved != null) {
-                // User-saved positions: restore as-is (user chose that placement)
                 card.setLayoutX(saved[0]);
                 card.setLayoutY(saved[1]);
             } else {
-                // Fresh layout: use the separated computed positions
                 double[] computed = layout.getOrDefault(table.getName(),
                         new double[]{20 + (i % 4) * 260.0, 20 + (i / 4) * 280.0});
                 card.setLayoutX(computed[0]);
                 card.setLayoutY(computed[1]);
             }
-
             makeDraggable(card, overlay, foreignKeys, stackPane, selectedSchema, table.getName());
             canvas.getChildren().add(card);
             i++;
         }
-
         ScrollPane scroll = new ScrollPane(stackPane);
         scroll.setFitToWidth(false);
         scroll.setFitToHeight(false);
         scroll.setStyle("-fx-background-color: transparent;");
         setCenter(scroll);
-        // Fire after two layout passes so all Bounds are valid
         Platform.runLater(() -> Platform.runLater(() ->
                 drawConnectors(overlay, foreignKeys, stackPane)));
     }
@@ -452,7 +470,9 @@ public class SchemasRoot extends BorderPane {
         }
 
         List<String> columns = new ArrayList<>();
-        List<String[]> rows  = db.GetTableData(schemaName, table.getName(), columns);
+        List<String[]> rows = isRemoteSelected
+                ? db.GetTableDataRemote(schemaName, table.getName(), columns)
+                : db.GetTableData(schemaName, table.getName(), columns);
 
         TableView<String[]> tv = new TableView<>();
         tv.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);

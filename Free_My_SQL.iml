@@ -9,5 +9,10 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="lib" level="project" />
     <orderEntry type="library" name="mysql-connector-j-9.6.0" level="project" />
+    <orderEntry type="library" name="jsch-0.1.55" level="project" />
+    <orderEntry type="library" name="commons-csv-1.10.0" level="project" />
+    <orderEntry type="library" name="poi-5.2.3" level="project" />
+    <orderEntry type="library" name="poi-ooxml-5.2.3" level="project" />
+    <orderEntry type="library" name="xmlbeans-5.1.1" level="project" />
   </component>
 </module>

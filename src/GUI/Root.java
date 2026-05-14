@@ -1,6 +1,7 @@
 package GUI;
 
 import GUI.Schemas.SchemasRoot;
+import SSH.SSHConnection;
 import globalfuncs.creds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -18,12 +19,13 @@ public class Root extends BorderPane {
 
     private boolean isCollapsed = false;
     private String  activeMenu = "Schemas";
-    private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs"};
+    private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs", "SSH"};
     private final String[] ICONS  = {
             "assets/schema.png",
             "assets/query.png",
             "assets/creds.png",
-            "assets/logs.png"
+            "assets/logs.png",
+            "assets/ssh.png"
     };
 
     public Root() {
@@ -242,6 +244,7 @@ public class Root extends BorderPane {
             case "Query" -> setCenter(new Query());
             case "Credentials" -> setCenter(new Creds());
             case "Logs" -> setCenter(new LogsRoot());
+            case "SSH" -> setCenter(new SSHConnection(() -> switchCenterContent("Schemas")));
         }
     }
 }

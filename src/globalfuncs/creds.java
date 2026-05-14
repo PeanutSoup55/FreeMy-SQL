@@ -10,34 +10,37 @@ public class creds {
     public static String pass = "";
     public static String url = "";
 
-    public static String getUser(){
-        return user;
-    }
+    public static String getUser(){return user;}
     public static String getPass(){return pass;}
-    public static String getUrl(){
-        return url;
-    }
+    public static String getUrl(){return url;}
     public static String getInitials(){return initials;}
+    public static void setInitials(String initials) {creds.initials = initials;}
+    public static void setUser(String user) {creds.user = user;}
+    public static void setPass(String pass) {creds.pass = pass;}
+    public static void setUrl(String url) {creds.url = url;}
+    public static void Display(){System.out.println(user + "\n" + pass + "\n" + url);}
 
-    public static void setInitials(String initials) {
-        creds.initials = initials;
+    private static String remoteUrl  = null;
+    private static String remoteUser = null;
+    private static String remotePass = null;
+
+    public static void setTunnel(int localPort, String dbUser, String dbPassword) {
+        remoteUrl  = "jdbc:mysql://127.0.0.1:" + localPort + "/?useSSL=false&allowPublicKeyRetrieval=true";
+        remoteUser = dbUser;
+        remotePass = dbPassword;
     }
 
-    public static void setUser(String user) {
-        creds.user = user;
+    public static void clearTunnel() {
+        remoteUrl = null;
+        remoteUser = null;
+        remotePass = null;
     }
 
-    public static void setPass(String pass) {
-        creds.pass = pass;
-    }
+    public static boolean hasRemote() { return remoteUrl != null; }
 
-    public static void setUrl(String url) {
-        creds.url = url;
-    }
-
-    public static void Display(){
-        System.out.println(user + "\n" + pass + "\n" + url);
-    }
+    public static String getRemoteUrl()  { return remoteUrl; }
+    public static String getRemoteUser() { return remoteUser; }
+    public static String getRemotePass() { return remotePass; }
 
     private static final Preferences ROOT_PREFS = Preferences.userRoot().node("Free_My_SQL/saved_login");
     private static final Preferences PROFILES_NODE = ROOT_PREFS.node("profiles");

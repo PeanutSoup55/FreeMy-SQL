@@ -466,4 +466,117 @@ public class db {
         }
     }
 
+    public static Connection ConnectRemote() throws SQLException {
+        return DriverManager.getConnection(
+                creds.getRemoteUrl(),
+                creds.getRemoteUser(),
+                creds.getRemotePass()
+        );
+    }
+
+    public static List<Schema> SchemasRemote() {
+        List<Schema> databases = new ArrayList<>();
+        String query = "SHOW DATABASES WHERE `Database` NOT IN ('information_schema','mysql','performance_schema','sys')";
+        try (Connection conn = ConnectRemote();
+             Statement stmt = conn.createStatement();
+             ResultSet rs   = stmt.executeQuery(query)) {
+            while (rs.next()) databases.add(new Schema(rs.getString(1)));
+        } catch (SQLException e) {
+            System.err.println("[REMOTE SQL ERROR] SchemasRemote — " + e.getMessage());
+        }
+        return databases;
+    }
+
+    public static Schema GetTablesInSchemaRemote(String schemaName) {
+        Schema schema = new Schema(schemaName);
+        String tablesQuery = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?";
+        String colQuery =
+                "SELECT c.COLUMN_NAME, c.DATA_TYPE, c.COLUMN_KEY, " +
+                        "       k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME " +
+                        "FROM INFORMATION_SCHEMA.COLUMNS c " +
+                        "LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k " +
+                        "       ON k.TABLE_SCHEMA = c.TABLE_SCHEMA " +
+                        "      AND k.TABLE_NAME   = c.TABLE_NAME " +
+                        "      AND k.COLUMN_NAME  = c.COLUMN_NAME " +
+                        "      AND k.REFERENCED_TABLE_NAME IS NOT NULL " +
+                        "WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ? " +
+                        "ORDER BY c.ORDINAL_POSITION";
+
+        try (Connection conn = ConnectRemote();
+             PreparedStatement tablePs = conn.prepareStatement(tablesQuery);
+             PreparedStatement colPs   = conn.prepareStatement(colQuery)) {
+
+            tablePs.setString(1, schemaName);
+            ResultSet tables = tablePs.executeQuery();
+            while (tables.next()) {
+                String tableName = tables.getString("TABLE_NAME");
+                Table table = new Table(tableName);
+                colPs.setString(1, schemaName);
+                colPs.setString(2, tableName);
+                ResultSet cols = colPs.executeQuery();
+                while (cols.next()) {
+                    boolean isPrimary = "PRI".equals(cols.getString("COLUMN_KEY"));
+                    String refTable   = cols.getString("REFERENCED_TABLE_NAME");
+                    String refCol     = cols.getString("REFERENCED_COLUMN_NAME");
+                    String reference  = refTable != null ? refTable + "(" + refCol + ")" : null;
+                    table.addField(new Field(reference, isPrimary,
+                            cols.getString("DATA_TYPE"), cols.getString("COLUMN_NAME")));
+                }
+                cols.close();
+                colPs.clearParameters();
+                schema.addTable(table);
+            }
+        } catch (SQLException e) {
+            System.err.println("[REMOTE SQL ERROR] GetTablesInSchemaRemote — " + e.getMessage());
+        }
+        return schema;
+    }
+
+    public static List<String[]> GetForeignKeysRemote(String schemaName) {
+        List<String[]> fks = new ArrayList<>();
+        String query =
+                "SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME " +
+                        "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " +
+                        "WHERE TABLE_SCHEMA = ? AND REFERENCED_TABLE_NAME IS NOT NULL";
+        try (Connection conn = ConnectRemote();
+             PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, schemaName);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                fks.add(new String[]{
+                        rs.getString("TABLE_NAME"),
+                        rs.getString("COLUMN_NAME"),
+                        rs.getString("REFERENCED_TABLE_NAME"),
+                        rs.getString("REFERENCED_COLUMN_NAME")
+                });
+            }
+        } catch (SQLException e) {
+            System.err.println("[REMOTE SQL ERROR] GetForeignKeysRemote — " + e.getMessage());
+        }
+        return fks;
+    }
+
+    public static List<String[]> GetTableDataRemote(String schemaName, String tableName, List<String> outColumns) {
+        List<String[]> rows = new ArrayList<>();
+        String query = "SELECT * FROM `" + schemaName + "`.`" + tableName + "`";
+        try (Connection conn = ConnectRemote();
+             Statement stmt  = conn.createStatement();
+             ResultSet rs    = stmt.executeQuery(query)) {
+            ResultSetMetaData meta = rs.getMetaData();
+            int colCount = meta.getColumnCount();
+            for (int i = 1; i <= colCount; i++) outColumns.add(meta.getColumnName(i));
+            while (rs.next()) {
+                String[] row = new String[colCount];
+                for (int i = 1; i <= colCount; i++) {
+                    String val = rs.getString(i);
+                    row[i - 1] = val != null ? val : "NULL";
+                }
+                rows.add(row);
+            }
+        } catch (SQLException e) {
+            System.err.println("[REMOTE SQL ERROR] GetTableDataRemote — " + e.getMessage());
+        }
+        return rows;
+    }
+
 }
