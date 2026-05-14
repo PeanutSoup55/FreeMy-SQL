@@ -4,283 +4,214 @@ import globalfuncs.creds;
 import globalfuncs.db;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 
 import java.sql.SQLException;
-import java.util.Objects;
 
 public class Creds extends VBox {
 
     private static final String GREEN = "#2F5230";
     private static final String GREEN_HOVER = "#3d6b40";
-    private static final String BG_CARD = "#FFFFFF";
-    private static final String BG_PAGE = "#EBEBEB";
     private static final String TEXT_MAIN = "#1a1a1a";
     private static final String TEXT_MUTED = "#6b7280";
     private static final String BORDER = "#e0e0e0";
 
-    private Label userStatus;
-    private Label passStatus;
-    private Label urlStatus;
-    private Label initialsStatus;
+    private ComboBox<String> profileBox;
+    private TextField urlField, userField, initialsField;
+    private PasswordField passField;
+    private Label statusLabel;
 
     public Creds() {
-        setSpacing(12);
+        setSpacing(14);
         setPadding(new Insets(24));
-        setStyle("-fx-background-color: " + BG_PAGE + ";");
+        setStyle("-fx-background-color: transparent;");
 
-        Label pageTitle = new Label("Credentials");
-        pageTitle.setStyle("-fx-font-size: 20px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: " + TEXT_MAIN + ";" +
-                        "-fx-padding: 0 0 8 0;"
+        Label title = new Label("Credentials");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + TEXT_MAIN + ";");
+
+        getChildren().addAll(title, buildProfileBar(), buildFormCard(), buildActionRow());
+        populateProfiles();
+    }
+
+    private HBox buildProfileBar() {
+        profileBox = new ComboBox<>();
+        profileBox.setPrefHeight(36);
+        HBox.setHgrow(profileBox, Priority.ALWAYS);
+        profileBox.setMaxWidth(Double.MAX_VALUE);
+        profileBox.setOnAction(e -> loadSelectedProfile());
+
+        Button addBtn = new Button("+");
+        Button delBtn = new Button("X");
+        for (Button b : new Button[]{addBtn, delBtn}) {
+            b.setPrefSize(36, 36);
+            b.setStyle("-fx-background-color: white; -fx-border-color: " + BORDER + "; -fx-border-radius: 7; -fx-background-radius: 7; -fx-cursor: hand; -fx-font-size: 14px;");
+        }
+        addBtn.setOnAction(e -> addProfile());
+        delBtn.setOnAction(e -> deleteProfile());
+
+        HBox row = new HBox(8, profileBox, addBtn, delBtn);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
+    }
+
+    private VBox buildFormCard() {
+        urlField = field("jdbc:mysql://host:3306/db");
+        userField = field("Username");
+        passField = new PasswordField();
+        passField.setPromptText("Password");
+        styleField(passField);
+        initialsField = field("e.g. JD");
+        initialsField.textProperty().addListener((obs, o, n) -> {
+            if (n != null && n.length() > 4) initialsField.setText(n.substring(0, 4));
+        });
+
+        VBox card = new VBox(12,
+                row("Host URL", urlField),
+                row("User", userField),
+                row("Password", passField),
+                row("Initials", initialsField)
         );
-
-        getChildren().addAll(pageTitle, UserBox(), PassBox(), URLBox(), InitialsBox());
-    }
-
-    public VBox UserBox() {
-        Label userLabel = new Label(nullSafe(creds.getUser(), "—"));
-        styleValueLabel(userLabel);
-
-        userStatus = new Label();
-        userStatus.setVisible(false);
-
-        TextField changeUser = new TextField();
-        styleTextField(changeUser, "New username");
-        changeUser.textProperty().addListener((obs, o, n) -> userStatus.setVisible(false));
-
-        Button enter = styledButton("Save");
-        enter.setOnAction(e -> {
-            String val = sanitize(changeUser.getText());
-            if (val == null) { showStatus(userStatus, "Username cannot be empty.", true); return; }
-            String prev = creds.getUser();
-            creds.setUser(val);
-            if (testConnection()) {
-                userLabel.setText(val);
-                changeUser.clear();
-                showStatus(userStatus, "Connected as " + val + ".", false);
-            } else {
-                creds.setUser(prev);
-                showStatus(userStatus, "Connection failed — reverted.", true);
-            }
-        });
-
-        return buildCard("User", Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/user.png")).toString(), userLabel, changeUser, enter, userStatus);
-    }
-
-    public VBox PassBox() {
-        Label passLabel = new Label(mask(creds.getPass()));
-        styleValueLabel(passLabel);
-
-        passStatus = new Label();
-        passStatus.setVisible(false);
-
-        PasswordField changePass = new PasswordField();
-        styleTextField(changePass, "New password");
-        changePass.textProperty().addListener((obs, o, n) -> passStatus.setVisible(false));
-
-        Button enter = styledButton("Save");
-        enter.setOnAction(e -> {
-            String val = changePass.getText();
-            if (val == null || val.isEmpty()) { showStatus(passStatus, "Password cannot be empty.", true); return; }
-            String prev = creds.getPass();
-            creds.setPass(val);
-            if (testConnection()) {
-                passLabel.setText(mask(val));
-                changePass.clear();
-                showStatus(passStatus, "Password updated.", false);
-            } else {
-                creds.setPass(prev);
-                showStatus(passStatus, "Connection failed — reverted.", true);
-            }
-        });
-
-        return buildCard("Password", Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/lock.png")).toString(), passLabel, changePass, enter, passStatus);
-    }
-
-    public VBox URLBox() {
-        Label urlLabel = new Label(nullSafe(creds.getUrl(), "—"));
-        styleValueLabel(urlLabel);
-        urlLabel.setWrapText(true);
-
-        urlStatus = new Label();
-        urlStatus.setVisible(false);
-
-        TextField changeUrl = new TextField();
-        styleTextField(changeUrl, "jdbc:mysql://host:3306/db");
-        changeUrl.textProperty().addListener((obs, o, n) -> urlStatus.setVisible(false));
-
-        Button enter = styledButton("Save");
-        enter.setOnAction(e -> {
-            String val = sanitize(changeUrl.getText());
-            if (val == null) { showStatus(urlStatus, "URL cannot be empty.", true); return; }
-            if (!isValidJdbcUrl(val)) { showStatus(urlStatus, "Must start with jdbc:mysql://", true); return; }
-            String prev = creds.getUrl();
-            creds.setUrl(val);
-            if (testConnection()) {
-                urlLabel.setText(val);
-                changeUrl.clear();
-                showStatus(urlStatus, "Connected to new host.", false);
-            } else {
-                creds.setUrl(prev);
-                showStatus(urlStatus, "Connection failed — reverted.", true);
-            }
-        });
-
-        return buildCard("Host URL", Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/link.png")).toString(), urlLabel, changeUrl, enter, urlStatus);
-    }
-
-    public VBox InitialsBox() {
-        Label initialsLabel = new Label(nullSafe(creds.getInitials(), "—"));
-        styleValueLabel(initialsLabel);
-
-        initialsStatus = new Label();
-        initialsStatus.setVisible(false);
-
-        TextField changeInitials = new TextField();
-        styleTextField(changeInitials, "e.g. JD");
-        changeInitials.textProperty().addListener((obs, o, n) -> {
-            initialsStatus.setVisible(false);
-            if (n != null && n.length() > 4)
-                changeInitials.setText(n.substring(0, 4));
-        });
-
-        Button enter = styledButton("Save");
-        enter.setOnAction(e -> {
-            String val = sanitize(changeInitials.getText());
-            if (val == null) { showStatus(initialsStatus, "Initials cannot be empty.", true); return; }
-            if (val.length() > 4) { showStatus(initialsStatus, "Max 4 characters.", true); return; }
-            if (!val.matches("[A-Za-z]+")) { showStatus(initialsStatus, "Letters only.", true); return; }
-            creds.setInitials(val.toUpperCase());
-            initialsLabel.setText(val.toUpperCase());
-            changeInitials.clear();
-            showStatus(initialsStatus, "Initials saved.", false);
-        });
-
-        return buildCard("Initials", Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/id.png")).toString(), initialsLabel, changeInitials, enter, initialsStatus);
-    }
-
-    private VBox buildCard(String title, String iconPath, Label currentValue, TextField input, Button saveBtn, Label status) {
-        HBox header = new HBox(8);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        try {
-            ImageView iv = new ImageView(new Image(iconPath));
-            iv.setFitWidth(16);
-            iv.setFitHeight(16);
-            header.getChildren().add(iv);
-        } catch (Exception ignored) { /* asset missing — skip icon */ }
-
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 11px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-text-fill: " + TEXT_MUTED + ";" +
-                        "-fx-letter-spacing: 0.05em;"
-        );
-        header.getChildren().add(titleLabel);
-
-        HBox inputRow = new HBox(8);
-        inputRow.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(input, Priority.ALWAYS);
-        inputRow.getChildren().addAll(input, saveBtn);
-
-        VBox card = new VBox(8);
         card.setPadding(new Insets(16));
-        card.setStyle("-fx-background-color: " + BG_CARD + ";" +
-                        "-fx-background-radius: 10;" +
-                        "-fx-border-color: " + BORDER + ";" +
-                        "-fx-border-radius: 10;" +
-                        "-fx-border-width: 1;"
-        );
-        card.getChildren().addAll(header, currentValue, inputRow, status);
+        card.setStyle("-fx-background-color: white; -fx-border-color: " + BORDER + "; -fx-border-radius: 10; -fx-background-radius: 10;");
         return card;
     }
 
-    private Button styledButton(String text) {
-        Button btn = new Button(text);
-        btn.setStyle("-fx-background-color: " + GREEN + ";" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-size: 13px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 7;" +
-                        "-fx-padding: 8 18 8 18;" +
-                        "-fx-cursor: hand;"
-        );
-        btn.setOnMouseEntered(e -> btn.setStyle(btn.getStyle().replace(GREEN, GREEN_HOVER)));
-        btn.setOnMouseExited(e -> btn.setStyle(btn.getStyle().replace(GREEN_HOVER, GREEN)));
-        return btn;
+    private HBox buildActionRow() {
+        statusLabel = new Label();
+        statusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + TEXT_MUTED + ";");
+        HBox.setHgrow(statusLabel, Priority.ALWAYS);
+
+        Button save = new Button("Test & Save");
+        save.setStyle("-fx-background-color: " + GREEN + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 9 20; -fx-cursor: hand;");
+        save.setOnMouseEntered(e -> save.setStyle(save.getStyle().replace(GREEN, GREEN_HOVER)));
+        save.setOnMouseExited(e ->  save.setStyle(save.getStyle().replace(GREEN_HOVER, GREEN)));
+        save.setOnAction(e -> testAndSave());
+
+        HBox row = new HBox(12, statusLabel, save);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
     }
 
-    private void styleTextField(TextField tf, String prompt) {
-        tf.setPromptText(prompt);
-        tf.setStyle("-fx-background-color: #f9f9f9;" +
-                        "-fx-border-color: " + BORDER + ";" +
-                        "-fx-border-radius: 7;" +
-                        "-fx-background-radius: 7;" +
-                        "-fx-padding: 8 12 8 12;" +
-                        "-fx-font-size: 13px;" +
-                        "-fx-text-fill: " + TEXT_MAIN + ";"
-        );
-        tf.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
-            String base = "-fx-background-color: #f9f9f9;" +
-                            "-fx-border-radius: 7;" +
-                            "-fx-background-radius: 7;" +
-                            "-fx-padding: 8 12 8 12;" +
-                            "-fx-font-size: 13px;" +
-                            "-fx-text-fill: " + TEXT_MAIN + ";";
-            tf.setStyle(base + (isFocused ? "-fx-border-color: " + GREEN + "; -fx-border-width: 1.5;" : "-fx-border-color: " + BORDER + "; -fx-border-width: 1;"));
+    private void populateProfiles() {
+        String[] names = creds.getAllProfileNames();
+        profileBox.getItems().setAll(names);
+        String last = creds.getLastUsedProfile();
+        if (last != null && !last.isBlank()) {
+            profileBox.setValue(last);
+        } else if (names.length > 0) {
+            profileBox.setValue(names[0]);
+        }
+        loadSelectedProfile();
+    }
+
+    private void loadSelectedProfile() {
+        String sel = profileBox.getValue();
+        if (sel == null || sel.isBlank()) return;
+        String[] d = creds.loadProfile(sel); // [url, user, initials]
+        urlField.setText(d[0]);
+        userField.setText(d[1]);
+        initialsField.setText(d[2]);
+        passField.clear();
+        statusLabel.setText("");
+    }
+
+    private void addProfile() {
+        TextInputDialog dlg = new TextInputDialog();
+        dlg.setTitle("New Profile");
+        dlg.setHeaderText(null);
+        dlg.setContentText("Profile name:");
+        dlg.showAndWait().ifPresent(name -> {
+            String n = name.trim();
+            if (n.isEmpty()) return;
+            if (!profileBox.getItems().contains(n)) profileBox.getItems().add(n);
+            profileBox.setValue(n);
+            urlField.clear(); userField.clear(); passField.clear(); initialsField.clear();
         });
     }
 
-    private void styleValueLabel(Label label) {
-        label.setStyle("-fx-font-size: 13px;" +
-                        "-fx-text-fill: " + TEXT_MAIN + ";" +
-                        "-fx-font-family: monospace;"
-        );
+    private void deleteProfile() {
+        String sel = profileBox.getValue();
+        if (sel == null || sel.isBlank()) return;
+        new Alert(Alert.AlertType.CONFIRMATION, "Delete \"" + sel + "\"?", ButtonType.YES, ButtonType.CANCEL)
+                .showAndWait().ifPresent(b -> {
+                    if (b != ButtonType.YES) return;
+                    creds.removeProfile(sel);
+                    profileBox.getItems().remove(sel);
+                    if (!profileBox.getItems().isEmpty()) {
+                        profileBox.setValue(profileBox.getItems().get(0));
+                        loadSelectedProfile();
+                    } else {
+                        urlField.clear(); userField.clear(); passField.clear(); initialsField.clear();
+                    }
+                    status("Profile deleted.", false);
+                });
     }
 
-    private boolean testConnection() {
-        try (var conn = db.Connect()) {
-            return conn != null && !conn.isClosed();
-        } catch (SQLException e) {
-            return false;
+    private void testAndSave() {
+        String url = trim(urlField.getText());
+        String user = trim(userField.getText());
+        String pass = passField.getText();
+        String ini = trim(initialsField.getText());
+        String prof = profileBox.getValue();
+
+        if (url == null)  { status("URL cannot be empty.", true); return; }
+        if (!url.startsWith("jdbc:mysql://")) { status("URL must start with jdbc:mysql://", true); return; }
+        if (user == null) { status("Username cannot be empty.", true); return; }
+        if (ini == null)  { status("Initials cannot be empty.", true); return; }
+        if (!ini.matches("[A-Za-z]{1,4}")) { status("Initials: letters only, max 4.", true); return; }
+
+        String prevUrl = creds.getUrl(), prevUser = creds.getUser(), prevPass = creds.getPass();
+        creds.setUrl(url);
+        creds.setUser(user);
+        if (!pass.isEmpty()) creds.setPass(pass);
+
+        if (connected()) {
+            creds.setInitials(ini.toUpperCase());
+            initialsField.setText(ini.toUpperCase());
+            if (prof != null && !prof.isBlank()) creds.saveProfile(prof, url, user, ini.toUpperCase());
+            passField.clear();
+            status("Connected and saved.", false);
+        } else {
+            creds.setUrl(prevUrl); creds.setUser(prevUser); creds.setPass(prevPass);
+            status("Connection failed — reverted.", true);
         }
     }
 
-    private String sanitize(String raw) {
-        if (raw == null) return null;
-        String trimmed = raw.strip();
-        return trimmed.isEmpty() ? null : trimmed;
+    private boolean connected() {
+        try (var c = db.Connect()) { return c != null && !c.isClosed(); }
+        catch (SQLException e) { return false; }
     }
 
-    private String nullSafe(String value, String fallback) {
-        return (value != null && !value.isBlank()) ? value : fallback;
+    private String trim(String s) {
+        if (s == null) return null;
+        String t = s.strip();
+        return t.isEmpty() ? null : t;
     }
 
-    private String mask(String pass) {
-        if (pass == null || pass.isEmpty()) return "—";
-        return "•".repeat(Math.min(pass.length(), 12));
+    private void status(String msg, boolean error) {
+        statusLabel.setText(msg);
+        statusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (error ? "#cc3333" : "#2a7a2a") + ";");
     }
 
-    private boolean isValidJdbcUrl(String url) {
-        return url != null && url.startsWith("jdbc:mysql://");
+    private TextField field(String prompt) {
+        TextField tf = new TextField();
+        tf.setPromptText(prompt);
+        styleField(tf);
+        return tf;
     }
 
-    private void showStatus(Label label, String message, boolean isError) {
-        label.setText(message);
-        label.setStyle(
-                "-fx-font-size: 11px;" +
-                        "-fx-text-fill: " + (isError ? "#cc3333" : "#2a7a2a") + ";"
-        );
-        label.setVisible(true);
+    private void styleField(TextField tf) {
+        tf.setStyle("-fx-background-color: #f9f9f9; -fx-border-color: " + BORDER + "; -fx-border-radius: 7; -fx-background-radius: 7; -fx-padding: 7 10; -fx-font-size: 13px;");
+    }
+
+    private HBox row(String label, TextField field) {
+        Label lbl = new Label(label);
+        lbl.setMinWidth(72);
+        lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: " + TEXT_MUTED + ";");
+        HBox.setHgrow(field, Priority.ALWAYS);
+        HBox row = new HBox(10, lbl, field);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
     }
 }
