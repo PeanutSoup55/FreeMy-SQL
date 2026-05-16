@@ -18,7 +18,6 @@ import javafx.scene.shape.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-import javafx.scene.text.TextAlignment;
 import Objects.*;
 
 import java.util.*;
@@ -33,6 +32,10 @@ public class SchemasRoot extends BorderPane {
     private static final java.util.prefs.Preferences PREFS = java.util.prefs.Preferences.userRoot().node("Free_My_SQL/table_positions");
     private boolean isRemoteSelected = false;
     public static List<Schema> remoteSchemas = new ArrayList<>();
+    private boolean sortAscending = true;
+    private final List<VBox> schemaWrappers = new ArrayList<>();
+    private VBox localSection;
+    private VBox remoteSection;
 
     public SchemasRoot() {
         createSide();
@@ -40,201 +43,456 @@ public class SchemasRoot extends BorderPane {
     }
 
     private void createSide() {
-        VBox vBox = new VBox();
-        vBox.setPadding(new Insets(10));
-        vBox.setStyle("-fx-background-radius: 15;" +
+        VBox shell = new VBox();
+        shell.setPrefWidth(220);
+        shell.setMaxWidth(220);
+        shell.setStyle(
                 "-fx-background-color: #FFFFFF;" +
-                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
-        BorderPane.setMargin(vBox, new Insets(10));
+                        "-fx-background-radius: 10;" +
+                        "-fx-border-color: #DEDEDE;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-border-radius: 10;" +
+                        "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 1, 2);"
+        );
+        BorderPane.setMargin(shell, new Insets(10));
 
-        Button refreshBtn = new Button("↻");
-        refreshBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47;" +
-                "-fx-font-size: 16; -fx-cursor: hand; -fx-padding: 0 4;");
+        // ── TOOLBAR ───────────────────────────────────────────────────
+        HBox toolbar = new HBox(2);
+        toolbar.setPadding(new Insets(5, 6, 5, 6));
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        toolbar.setStyle(
+                "-fx-background-color: #FFFFFF;" +
+                        "-fx-background-radius: 10 10 0 0;" +
+                        "-fx-border-color: transparent transparent #EBEBEB transparent;" +
+                        "-fx-border-width: 1;"
+        );
+
+        Button refreshBtn  = makeToolBtn("/assets/refresh.png",  "Refresh");
+        Button collapseBtn = makeToolBtn("/assets/collapse.png", "Collapse all");
+        Button sortBtn     = makeToolBtn("/assets/sort.png",     "Sort A→Z / Z→A");
+
         refreshBtn.setOnAction(e -> refresh());
 
-        // ── Local section ──────────────────────────────────────────
-        Text localHeader = new Text("Local");
-        localHeader.setStyle("-fx-font-weight: 600;");
+        collapseBtn.setOnAction(e -> {
+            for (VBox wrapper : schemaWrappers) {
+                if (wrapper.getChildren().size() > 1) {
+                    Node tableList = wrapper.getChildren().get(1);
+                    if (tableList.isVisible()) {
+                        tableList.setVisible(false);
+                        tableList.setManaged(false);
+                        HBox row        = (HBox) wrapper.getChildren().get(0);
+                        StackPane caret = (StackPane) row.getChildren().get(0);
+                        ((ImageView) caret.getChildren().getFirst()).setImage(
+                                new Image(getClass().getResourceAsStream("/assets/right.png"))
+                        );
+                        ((Label) row.getChildren().get(3)).setVisible(false);
+                    }
+                }
+            }
+        });
 
-        Region topSpacer = new Region();
-        HBox.setHgrow(topSpacer, Priority.ALWAYS);
-        HBox topRow = new HBox(localHeader, topSpacer, refreshBtn);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-        topRow.setPadding(new Insets(0, 0, 4, 0));
+        sortBtn.setOnAction(e -> {
+            sortAscending = !sortAscending;
+            resortSection(localSection, sortAscending);
+            if (creds.hasRemote()) resortSection(remoteSection, sortAscending);
+        });
 
-        Separator sep1 = new Separator();
-        sep1.setPadding(new Insets(5, 0, 5, 0));
+        Region tbSpacer = new Region();
+        HBox.setHgrow(tbSpacer, Priority.ALWAYS);
 
-        VBox localSection = new VBox(4);
-        for (Schema schema : schemas) localSection.getChildren().add(generateTab(schema, false));
+        Button newBtn = makeToolBtn("/assets/add.png", "New schema");
+        newBtn.setOnAction(e -> setCenter(new SchemasAdd(this)));
+
+        toolbar.getChildren().addAll(refreshBtn, collapseBtn, sortBtn, tbSpacer, newBtn);
+
+        // ── SEARCH BAR ────────────────────────────────────────────────
+        HBox searchRow = new HBox(6);
+        searchRow.setPadding(new Insets(5, 8, 5, 8));
+        searchRow.setAlignment(Pos.CENTER_LEFT);
+        searchRow.setStyle(
+                "-fx-background-color: #FFFFFF;" +
+                        "-fx-border-color: transparent transparent #EBEBEB transparent;" +
+                        "-fx-border-width: 1;"
+        );
+
+        ImageView searchIcon = new ImageView(
+                new Image(getClass().getResourceAsStream("/assets/search.png"))
+        );
+        searchIcon.setFitWidth(13);
+        searchIcon.setFitHeight(13);
+        searchIcon.setPreserveRatio(true);
+
+        TextField searchField = new TextField();
+        searchField.setPromptText("Filter schemas…");
+        searchField.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: transparent;" +
+                        "-fx-padding: 0;"
+        );
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        searchRow.getChildren().addAll(searchIcon, searchField);
+
+        // ── TREE CONTENT ──────────────────────────────────────────────
+        VBox treeContent = new VBox(0);
+        schemaWrappers.clear();
+
+        treeContent.getChildren().add(buildSectionHeader("LOCAL"));
+        localSection = new VBox(0);
+        for (Schema schema : schemas) {
+            VBox wrapper = generateTab(schema, false);
+            schemaWrappers.add(wrapper);
+            localSection.getChildren().add(wrapper);
+        }
+        treeContent.getChildren().add(localSection);
 
         if (creds.hasRemote()) {
             remoteSchemas = db.SchemasRemote();
-
-            Separator sep2 = new Separator();
-            sep2.setPadding(new Insets(8, 0, 4, 0));
-
-            Text remoteHeader = new Text("Remote  🔗");
-            remoteHeader.setStyle("-fx-font-weight: 600; -fx-fill: #2E5A47;");
-
-            VBox remoteSection = new VBox(4);
-            for (Schema schema : remoteSchemas) remoteSection.getChildren().add(generateTab(schema, true));
-
-            vBox.getChildren().addAll(topRow, sep1, localSection, sep2, remoteHeader, remoteSection);
-        } else {
-            vBox.getChildren().addAll(topRow, sep1, localSection);
+            Separator divider = new Separator();
+            divider.setPadding(new Insets(4, 0, 4, 0));
+            treeContent.getChildren().addAll(divider, buildSectionHeader("REMOTE"));
+            remoteSection = new VBox(0);
+            for (Schema schema : remoteSchemas) {
+                VBox wrapper = generateTab(schema, true);
+                schemaWrappers.add(wrapper);
+                remoteSection.getChildren().add(wrapper);
+            }
+            treeContent.getChildren().add(remoteSection);
         }
 
-        Region region = new Region();
-        VBox.setVgrow(region, Priority.ALWAYS);
+        searchField.textProperty().addListener((obs, oldVal, query) -> {
+            String lc = query.toLowerCase().trim();
+            for (VBox wrapper : schemaWrappers) {
+                HBox row = (HBox) wrapper.getChildren().get(0);
+                String name = (String) row.getUserData();
+                boolean show = lc.isEmpty() || name.toLowerCase().contains(lc);
+                wrapper.setVisible(show);
+                wrapper.setManaged(show);
+            }
+        });
 
-        HBox makeSchema = new HBox();
-        makeSchema.setPadding(new Insets(15));
-        makeSchema.setBackground(new Background(new BackgroundFill(Color.web("#2E5A47"), new CornerRadii(8), Insets.EMPTY)));
-        Text makeSchemaLabel = new Text("Make Schema");
-        makeSchemaLabel.setFill(Color.WHITE);
-        makeSchemaLabel.setStyle("-fx-font-weight: 700;");
-        makeSchema.getChildren().add(makeSchemaLabel);
-        makeSchema.setOnMouseClicked(e -> setCenter(new SchemasAdd(this)));
+        ScrollPane scrollPane = new ScrollPane(treeContent);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setStyle(
+                "-fx-background: transparent;" +
+                        "-fx-background-color: transparent;" +
+                        "-fx-border-color: transparent;"
+        );
+        scrollPane.skinProperty().addListener((obs, o, n) -> {
+            if (n != null)
+                scrollPane.lookup(".viewport")
+                        .setStyle("-fx-background-color: transparent;");
+        });
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        vBox.getChildren().addAll(region, makeSchema);
-        setLeft(vBox);
+        // ── FOOTER ────────────────────────────────────────────────────
+        HBox footer = new HBox(8);
+        footer.setPadding(new Insets(8, 10, 8, 10));
+        footer.setAlignment(Pos.CENTER_LEFT);
+        footer.setCursor(Cursor.HAND);
+        footer.setStyle(
+                "-fx-background-color: #FFFFFF;" +
+                        "-fx-background-radius: 0 0 10 10;" +
+                        "-fx-border-color: #EBEBEB transparent transparent transparent;" +
+                        "-fx-border-width: 1;"
+        );
+        footer.setOnMouseEntered(e -> footer.setStyle(
+                "-fx-background-color: #F5F5F5;" +
+                        "-fx-background-radius: 0 0 10 10;" +
+                        "-fx-border-color: #EBEBEB transparent transparent transparent;" +
+                        "-fx-border-width: 1;"
+        ));
+        footer.setOnMouseExited(e -> footer.setStyle(
+                "-fx-background-color: #FFFFFF;" +
+                        "-fx-background-radius: 0 0 10 10;" +
+                        "-fx-border-color: #EBEBEB transparent transparent transparent;" +
+                        "-fx-border-width: 1;"
+        ));
+        footer.setOnMouseClicked(e -> setCenter(new SchemasAdd(this)));
+
+        ImageView footerIcon = new ImageView(
+                new Image(getClass().getResourceAsStream("/assets/add.png"))
+        );
+        footerIcon.setFitWidth(13);
+        footerIcon.setFitHeight(13);
+        footerIcon.setPreserveRatio(true);
+
+        Label footerLabel = new Label("New schema");
+        footer.getChildren().addAll(footerIcon, footerLabel);
+
+        shell.getChildren().addAll(toolbar, searchRow, scrollPane, footer);
+        setLeft(shell);
+        createTables();
     }
 
-    private HBox generateTab(Schema schema, boolean remote) {
-        HBox hbox = new HBox();
-        hbox.setAlignment(Pos.CENTER);
-        hbox.setPadding(new Insets(10));
-        hbox.setMinWidth(100);
-        hbox.setPrefHeight(15);
+    // ── Section header ─────────────────────────────────────────────────
+    private HBox buildSectionHeader(String title) {
+        Label label = new Label(title);
+        label.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 10; -fx-font-weight: bold;");
+        HBox hdr = new HBox(label);
+        hdr.setPadding(new Insets(8, 8, 2, 10));
+        hdr.setAlignment(Pos.CENTER_LEFT);
+        return hdr;
+    }
 
-        Text text = new Text(schema.getName());
-        text.setFont(Font.font("System", 13));
-        text.setTextAlignment(TextAlignment.LEFT);
-        text.setStyle("-fx-font-weight: bold;");
+    // ── Toolbar button ─────────────────────────────────────────────────
+    private Button makeToolBtn(String iconPath, String tooltipText) {
+        ImageView icon = new ImageView(
+                new Image(getClass().getResourceAsStream(iconPath))
+        );
+        icon.setFitWidth(14);
+        icon.setFitHeight(14);
+        icon.setPreserveRatio(true);
+
+        Button btn = new Button();
+        btn.setGraphic(icon);
+        btn.setTooltip(new Tooltip(tooltipText));
+        btn.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-padding: 4 6;" +
+                        "-fx-background-radius: 4;"
+        );
+        btn.setOnMouseEntered(e -> btn.setStyle(
+                "-fx-background-color: #EFEFEF;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-padding: 4 6;" +
+                        "-fx-background-radius: 4;"
+        ));
+        btn.setOnMouseExited(e -> btn.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-padding: 4 6;" +
+                        "-fx-background-radius: 4;"
+        ));
+        return btn;
+    }
+
+    // ── generateTab ────────────────────────────────────────────────────
+    private VBox generateTab(Schema schema, boolean remote) {
+        Image imgRight = new Image(getClass().getResourceAsStream("/assets/right.png"));
+        Image imgDown  = new Image(getClass().getResourceAsStream("/assets/down.png"));
+
+        ImageView arrowIcon = new ImageView(imgRight);
+        arrowIcon.setFitWidth(10);
+        arrowIcon.setFitHeight(10);
+        arrowIcon.setPreserveRatio(true);
+
+        StackPane caretBtn = new StackPane(arrowIcon);
+        caretBtn.setPrefWidth(28);
+        caretBtn.setPrefHeight(30);
+        caretBtn.setMinWidth(28);
+        caretBtn.setCursor(Cursor.HAND);
+
+        Label nameLabel = new Label(schema.getName());
+
+        Label badge = new Label();
+        badge.setStyle(
+                "-fx-background-color: #EEEEEE;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-text-fill: #888888;" +
+                        "-fx-font-size: 10;" +
+                        "-fx-padding: 0 5;"
+        );
+        badge.setVisible(false);
+
+        Region rowSpacer = new Region();
+        HBox.setHgrow(rowSpacer, Priority.ALWAYS);
+
+        HBox schemaRow = new HBox(0, caretBtn, nameLabel, rowSpacer, badge);
+        schemaRow.setAlignment(Pos.CENTER_LEFT);
+        schemaRow.setPadding(new Insets(0, 8, 0, 0));
+        schemaRow.setPrefHeight(30);
+        schemaRow.setMinHeight(30);
+        schemaRow.setCursor(Cursor.HAND);
+        schemaRow.setUserData(schema.getName());
+
+        VBox tableList = new VBox(0);
+        tableList.setVisible(false);
+        tableList.setManaged(false);
+
+        VBox wrapper = new VBox(schemaRow, tableList);
 
         if (selectedTab == null && !remote) {
-            applySelectedStyle(hbox, text);
-            selectedTab = hbox;
+            applySelectedStyle(schemaRow, nameLabel);
+            selectedTab = schemaRow;
             isRemoteSelected = false;
         } else {
-            applyDefaultStyle(hbox, text);
+            applyDefaultStyle(schemaRow, nameLabel);
         }
-        hbox.setOnMouseClicked(e -> {
+
+        Runnable populateIfEmpty = () -> {
+            if (tableList.getChildren().isEmpty()) {
+                Schema full = db.GetTablesInSchema(schema.getName());
+                badge.setText(String.valueOf(full.getTables().size()));
+                for (Table table : full.getTables()) {
+                    Label tableLabel = new Label(table.getName());
+                    tableLabel.setStyle("-fx-text-fill: #555555;");
+
+                    HBox tableRow = new HBox(tableLabel);
+                    tableRow.setPadding(new Insets(0, 8, 0, 38));
+                    tableRow.setPrefHeight(26);
+                    tableRow.setMinHeight(26);
+                    tableRow.setAlignment(Pos.CENTER_LEFT);
+                    tableRow.setStyle("-fx-background-color: #FAFAFA;");
+                    tableRow.setCursor(Cursor.HAND);
+
+                    tableRow.setOnMouseEntered(ev ->
+                            tableRow.setStyle("-fx-background-color: #EEF3FF;"));
+                    tableRow.setOnMouseExited(ev ->
+                            tableRow.setStyle("-fx-background-color: #FAFAFA;"));
+                    tableRow.setOnMouseClicked(ev -> ev.consume());
+
+                    tableList.getChildren().add(tableRow);
+                }
+            }
+        };
+
+        Runnable expand = () -> {
+            populateIfEmpty.run();
+            arrowIcon.setImage(imgDown);
+            badge.setVisible(true);
+            tableList.setVisible(true);
+            tableList.setManaged(true);
+        };
+
+        Runnable collapse = () -> {
+            arrowIcon.setImage(imgRight);
+            badge.setVisible(false);
+            tableList.setVisible(false);
+            tableList.setManaged(false);
+        };
+
+        caretBtn.setOnMouseClicked(e -> {
             if (e.getButton() == MouseButton.PRIMARY) {
-                if (selectedTab != null) applyDefaultStyle(selectedTab, (Text) selectedTab.getChildren().getFirst());
-                applySelectedStyle(hbox, text);
-                selectedTab = hbox;
+                if (tableList.isVisible()) collapse.run();
+                else                       expand.run();
+                e.consume();
+            }
+        });
+
+        schemaRow.setOnMouseEntered(e -> {
+            if (selectedTab != schemaRow)
+                schemaRow.setStyle("-fx-background-color: #F5F5F5;");
+        });
+        schemaRow.setOnMouseExited(e -> {
+            if (selectedTab != schemaRow)
+                applyDefaultStyle(schemaRow, nameLabel);
+        });
+
+        schemaRow.setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) {
+                if (selectedTab != null && selectedTab != schemaRow) {
+                    Label prevName = (Label) selectedTab.getChildren().get(1);
+                    applyDefaultStyle(selectedTab, prevName);
+                }
+                applySelectedStyle(schemaRow, nameLabel);
+                selectedTab      = schemaRow;
                 isRemoteSelected = remote;
                 createTables();
-            }else if (e.getButton() == MouseButton.SECONDARY){
+
+            } else if (e.getButton() == MouseButton.SECONDARY) {
                 ContextMenu contextMenu = new ContextMenu();
-                contextMenu.setStyle("-fx-background-color: white;" +
-                                "-fx-background-radius: 8;" +
-                                "-fx-border-radius: 8;" +
-                                "-fx-border-color: #E0E0E0;" +
-                                "-fx-padding: 4;" +
-                                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 2);"
+                contextMenu.setStyle(
+                        "-fx-background-color: white; -fx-background-radius: 8;" +
+                                "-fx-border-radius: 8; -fx-border-color: #E0E0E0; -fx-padding: 4;" +
+                                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);"
                 );
                 MenuItem deleteItem = new MenuItem("Delete " + schema.getName());
                 deleteItem.setOnAction(event -> {
                     Dialog<ButtonType> dialog = new Dialog<>();
                     dialog.setTitle("Delete Schema");
-
                     dialog.setHeaderText(null);
 
-                    ButtonType deleteButtonType = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
-                    dialog.getDialogPane().getButtonTypes().addAll(deleteButtonType, ButtonType.CANCEL);
+                    ButtonType deleteButtonType =
+                            new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+                    dialog.getDialogPane().getButtonTypes()
+                            .addAll(deleteButtonType, ButtonType.CANCEL);
 
                     Label header = new Label("Delete Schema");
                     header.setTextFill(Color.WHITE);
                     header.setFont(Font.font("System", FontWeight.BOLD, 14));
-
                     HBox headerBox = new HBox(header);
                     headerBox.setPadding(new Insets(10, 12, 10, 12));
-                    headerBox.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
+                    headerBox.setStyle(
+                            "-fx-background-color: #2E5A47;" +
+                                    "-fx-background-radius: 8 8 0 0;");
 
-                    Label warning = new Label("This will permanently delete the schema and all its tables.");
+                    Label warning = new Label(
+                            "This will permanently delete the schema and all its tables.");
                     warning.setStyle("-fx-text-fill: #444;");
-
-                    Label instruction = new Label("Type '" + schema.getName() + "' to confirm:");
+                    Label instruction = new Label(
+                            "Type '" + schema.getName() + "' to confirm:");
                     instruction.setStyle("-fx-font-weight: 600;");
-
                     TextField input = new TextField();
                     input.setPromptText(schema.getName());
-                    input.setStyle("-fx-background-radius: 6;" +
-                                    "-fx-border-radius: 6;" +
-                                    "-fx-border-color: #CCCCCC;" +
-                                    "-fx-padding: 6;"
-                    );
+                    input.setStyle(
+                            "-fx-background-radius: 6; -fx-border-radius: 6;" +
+                                    "-fx-border-color: #CCCCCC; -fx-padding: 6;");
 
                     VBox content = new VBox(10, warning, instruction, input);
                     content.setPadding(new Insets(12));
-                    VBox wrapper = new VBox(headerBox, content);
-                    wrapper.setStyle("-fx-background-color: white;" +
-                                    "-fx-background-radius: 8;" +
-                                    "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);"
-                    );
-                    dialog.getDialogPane().setContent(wrapper);
+                    VBox dialogWrapper = new VBox(headerBox, content);
+                    dialogWrapper.setStyle(
+                            "-fx-background-color: white; -fx-background-radius: 8;");
+                    dialog.getDialogPane().setContent(dialogWrapper);
 
-                    Node deleteButton = dialog.getDialogPane().lookupButton(deleteButtonType);
-                    Node cancelButton = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+                    Node deleteButton =
+                            dialog.getDialogPane().lookupButton(deleteButtonType);
+                    Node cancelButton =
+                            dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
                     deleteButton.setDisable(true);
-                    deleteButton.setStyle("-fx-background-color: #CCCCCC;" +
-                                    "-fx-text-fill: white;" +
-                                    "-fx-background-radius: 6;"
-                    );
-
-                    cancelButton.setStyle("-fx-background-color: transparent;" +
-                                    "-fx-text-fill: #2E5A47;" +
-                                    "-fx-font-weight: 600;"
-                    );
+                    deleteButton.setStyle(
+                            "-fx-background-color: #CCCCCC;" +
+                                    "-fx-text-fill: white; -fx-background-radius: 6;");
+                    cancelButton.setStyle(
+                            "-fx-background-color: transparent;" +
+                                    "-fx-text-fill: #2E5A47; -fx-font-weight: 600;");
 
                     input.textProperty().addListener((obs, oldVal, newVal) -> {
                         boolean valid = newVal.equals(schema.getName());
                         deleteButton.setDisable(!valid);
-                        deleteButton.setStyle(valid ? "-fx-background-color: #c0392b; -fx-text-fill: white; -fx-background-radius: 6;" : "-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
+                        deleteButton.setStyle(valid
+                                ? "-fx-background-color: #c0392b; -fx-text-fill: white; -fx-background-radius: 6;"
+                                : "-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
                     });
 
                     Optional<ButtonType> result = dialog.showAndWait();
-
                     if (result.isPresent() && result.get() == deleteButtonType) {
                         db.deleteSchema(schema);
-                        ((Pane) hbox.getParent()).getChildren().remove(hbox);
+                        ((Pane) wrapper.getParent()).getChildren().remove(wrapper);
+                        schemaWrappers.remove(wrapper);
                         refresh();
-                        System.out.println("Schema deleted successfully.");
                     }
                 });
                 contextMenu.getItems().add(deleteItem);
-                contextMenu.setOnShown(ev -> {
-                    for (MenuItem item : contextMenu.getItems()) {
-                        Node n = item.getGraphic();
-
-                        Node itemNode = contextMenu.getSkin().getNode().lookup(".menu-item");
-
-                        if (itemNode != null) {
-                            itemNode.setStyle("-fx-background-radius: 6;" +
-                                            "-fx-padding: 6 12;" +
-                                            "-fx-text-fill: #333333;"
-                            );
-                        }
-                    }
-                });
-                contextMenu.show(hbox, e.getScreenX(), e.getScreenY());
+                contextMenu.show(schemaRow, e.getScreenX(), e.getScreenY());
             }
         });
-        hbox.getChildren().add(text);
-        return hbox;
+
+        return wrapper;
     }
 
-    private void applySelectedStyle(HBox h, Text t) {
-        h.setBackground(new Background(new BackgroundFill(
-                Color.web("#2E5A47"), new CornerRadii(8), Insets.EMPTY)));
-        t.setFill(Color.WHITE);
+    // ── Style helpers — Label instead of Text now ──────────────────────
+    private void applySelectedStyle(HBox row, Label label) {
+        row.setStyle("-fx-background-color: #E3EDFF;");
+        label.setStyle("-fx-text-fill: #1755B0; -fx-font-weight: bold;");
     }
-    private void applyDefaultStyle(HBox h, Text t) {
-        h.setBackground(null);
-        t.setFill(Color.web("#4A4A4A"));
+
+    private void applyDefaultStyle(HBox row, Label label) {
+        row.setStyle("-fx-background-color: transparent;");
+        label.setStyle("-fx-text-fill: #222222; -fx-font-weight: normal;");
+    }
+    private void resortSection(VBox section, boolean ascending) {
+        List<Node> items = new ArrayList<>(section.getChildren());
+        items.sort((a, b) -> {
+            String nameA = (String)((HBox)((VBox)a).getChildren().get(0)).getUserData();
+            String nameB = (String)((HBox)((VBox)b).getChildren().get(0)).getUserData();
+            return ascending ? nameA.compareToIgnoreCase(nameB)
+                    : nameB.compareToIgnoreCase(nameA);
+        });
+        section.getChildren().setAll(items);
     }
     public void createTables() {
         mainSplit = null;
@@ -243,7 +501,7 @@ public class SchemasRoot extends BorderPane {
         cardNodeMap.clear();
 
         String selectedSchema = selectedTab != null
-                ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                ? (String) selectedTab.getUserData()
                 : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
         // ← Only change: route to remote or local methods
@@ -291,7 +549,7 @@ public class SchemasRoot extends BorderPane {
 
     public VBox buildCard(Table table) {
         String selectedSchemaName = selectedTab != null
-                ? ((Text) selectedTab.getChildren().getFirst()).getText()
+                ? (String) selectedTab.getUserData()
                 : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
         VBox card = new VBox();
@@ -850,7 +1108,7 @@ public class SchemasRoot extends BorderPane {
     public void refresh() {
         schemas = db.Schemas();
         if (selectedTab != null) {
-            String current = ((Text) selectedTab.getChildren().getFirst()).getText();
+            String current = (String) selectedTab.getUserData();
             if (!schemas.contains(current)) selectedTab = null;
         }
         createSide();
