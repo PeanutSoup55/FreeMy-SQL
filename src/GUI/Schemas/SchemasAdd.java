@@ -1,5 +1,6 @@
 package GUI.Schemas;
 
+import GUI.Schemas.SchemasRoot;
 import Objects.Field;
 import Objects.Schema;
 import Objects.Table;

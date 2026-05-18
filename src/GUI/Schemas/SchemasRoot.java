@@ -800,8 +800,8 @@ public class SchemasRoot extends BorderPane {
         dataTabPane.setTabMinWidth(110);
         dataTabPane.setTabMaxWidth(160);
         dataTabPane.setStyle("-fx-background-color: white;" +
-                        "-fx-focus-color: transparent;" +
-                        "-fx-faint-focus-color: transparent;"
+                "-fx-focus-color: transparent;" +
+                "-fx-faint-focus-color: transparent;"
         );
 
         dataTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
