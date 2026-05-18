@@ -5,6 +5,8 @@ import SSH.SSHConnection;
 import globalfuncs.creds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Separator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -27,10 +29,12 @@ public class Root extends BorderPane {
             "assets/logs.png",
             "assets/ssh.png"
     };
+    private SchemasRoot schemasRoot;
 
     public Root() {
+        schemasRoot = new SchemasRoot();
         createSide();
-        setCenter(new SchemasRoot());
+        setCenter(schemasRoot);
     }
 
     public void createSide() {
@@ -50,21 +54,40 @@ public class Root extends BorderPane {
     private VBox buildExpanded() {
         VBox vBox = new VBox();
         vBox.setStyle("-fx-background-radius: 15;" +
-                        "-fx-background-color: #FFFFFF;" +
-                        "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
+                "-fx-background-color: #FFFFFF;" +
+                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
         vBox.setPrefWidth(260);
 
         HBox top = createTopHBox(creds.getInitials(), creds.getUser(), creds.getUrl(), true);
-
         vBox.getChildren().add(top);
 
         for (int i = 0; i < LABELS.length; i++) {
             HBox item = createMenuItem(ICONS[i], LABELS[i], LABELS[i].equals(activeMenu), true);
             vBox.getChildren().add(item);
+
+            if ("Schemas".equals(LABELS[i]) && "Schemas".equals(activeMenu)) {
+                if (schemasRoot == null) schemasRoot = new SchemasRoot();
+                Separator sep = new Separator();
+                sep.setPadding(new Insets(4, 10, 4, 10));
+                vBox.getChildren().add(sep);
+
+                Node schemaPanel = schemasRoot.buildSidebarContent();
+                if (schemaPanel instanceof Region r) {
+                    r.setPrefWidth(Double.MAX_VALUE);
+                    r.setMaxWidth(Double.MAX_VALUE);
+                    r.setStyle(r.getStyle()
+                            .replace("-fx-border-color: #DEDEDE;", "-fx-border-color: transparent;")
+                            .replace("-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 1, 2);", "")
+                    );
+                }
+                VBox.setVgrow(schemaPanel, Priority.ALWAYS);
+                vBox.getChildren().add(schemaPanel);
+            }
         }
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
+        vBox.getChildren().add(spacer);
 
         return vBox;
     }
@@ -79,8 +102,6 @@ public class Root extends BorderPane {
 
         HBox top = createTopHBox(creds.getInitials(), null, null, false);
         vBox.getChildren().add(top);
-
-        vBox.getChildren().add(iconOnlyRow());
 
         for (int i = 0; i < LABELS.length; i++) {
             HBox item = createMenuItem(ICONS[i], LABELS[i], LABELS[i].equals(activeMenu), false);
@@ -149,21 +170,6 @@ public class Root extends BorderPane {
         return hbox;
     }
 
-    private HBox iconOnlyRow() {
-        ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/search.png"))));
-        imageView.setFitHeight(22);
-        imageView.setFitWidth(22);
-
-        HBox hbox = new HBox(imageView);
-        hbox.setAlignment(Pos.CENTER);
-        hbox.setPrefWidth(68);
-        hbox.setPadding(new Insets(14, 0, 14, 0));
-        hbox.setBackground(new Background(new BackgroundFill(
-                Color.web("#E9F5E8"), new CornerRadii(8), Insets.EMPTY)));
-        VBox.setMargin(hbox, new Insets(4, 10, 4, 10));
-        return hbox;
-    }
-
     private HBox createMenuItem(String icon, String labelText, boolean isSelected, boolean showLabel) {
         ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(icon))));
         imageView.setFitHeight(22);
@@ -177,18 +183,18 @@ public class Root extends BorderPane {
             label.setFont(Font.font("System", 13));
             label.setStyle("-fx-font-weight: bold;");
             hbox = new HBox(20, imageView, label);
-            hbox.setPadding(new Insets(16, 20, 16, 20));
+            hbox.setPadding(new Insets(9, 12, 9, 12));
             hbox.setMinWidth(200);
             hbox.setAlignment(Pos.CENTER_LEFT);
         } else {
             hbox = new HBox(imageView);
             hbox.setAlignment(Pos.CENTER);
             hbox.setPrefWidth(68);
-            hbox.setPadding(new Insets(16, 0, 16, 0));
+            hbox.setPadding(new Insets(9, 0, 9, 0));
         }
 
         hbox.setPrefHeight(30);
-        VBox.setMargin(hbox, new Insets(2, 10, 2, 10));
+        VBox.setMargin(hbox, new Insets(1, 6, 1, 6));
 
         final Text finalLabel = label;
         if (isSelected) applySelectedStyle(hbox, finalLabel);
@@ -219,7 +225,10 @@ public class Root extends BorderPane {
 
     private void switchCenterContent(String menuTitle) {
         switch (menuTitle) {
-            case "Schemas" -> setCenter(new SchemasRoot());
+            case "Schemas" -> {
+                if (schemasRoot == null) schemasRoot = new SchemasRoot();
+                setCenter(schemasRoot);
+            }
             case "Query" -> setCenter(new Query());
             case "Credentials" -> setCenter(new Creds());
             case "Logs" -> setCenter(new LogsRoot());

@@ -36,13 +36,17 @@ public class SchemasRoot extends BorderPane {
     private final List<VBox> schemaWrappers = new ArrayList<>();
     private VBox localSection;
     private VBox remoteSection;
-
     public SchemasRoot() {
-        createSide();
         createTables();
     }
 
     private void createSide() {
+        Node content = buildSidebarContent();
+        setLeft(content);
+    }
+
+
+    public Node buildSidebarContent() {
         VBox shell = new VBox();
         shell.setPrefWidth(220);
         shell.setMaxWidth(220);
@@ -54,7 +58,6 @@ public class SchemasRoot extends BorderPane {
                         "-fx-border-radius: 10;" +
                         "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 1, 2);"
         );
-        BorderPane.setMargin(shell, new Insets(10));
 
         // ── TOOLBAR ───────────────────────────────────────────────────
         HBox toolbar = new HBox(2);
@@ -224,6 +227,7 @@ public class SchemasRoot extends BorderPane {
         shell.getChildren().addAll(toolbar, searchRow, scrollPane, footer);
         setLeft(shell);
         createTables();
+        return shell;
     }
 
     // ── Section header ─────────────────────────────────────────────────
