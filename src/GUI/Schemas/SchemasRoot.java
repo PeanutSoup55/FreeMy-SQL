@@ -40,10 +40,7 @@ public class SchemasRoot extends BorderPane {
         createTables();
     }
 
-    private void createSide() {
-        Node content = buildSidebarContent();
-        setLeft(content);
-    }
+
 
 
     public Node buildSidebarContent() {
@@ -326,9 +323,12 @@ public class SchemasRoot extends BorderPane {
             applyDefaultStyle(schemaRow, nameLabel);
         }
 
+        // ── FIX: use the correct connection (local vs remote) when fetching tables ──
         Runnable populateIfEmpty = () -> {
             if (tableList.getChildren().isEmpty()) {
-                Schema full = db.GetTablesInSchema(schema.getName());
+                Schema full = remote
+                        ? db.GetTablesInSchemaRemote(schema.getName())
+                        : db.GetTablesInSchema(schema.getName());
                 badge.setText(String.valueOf(full.getTables().size()));
                 for (Table table : full.getTables()) {
                     Label tableLabel = new Label(table.getName());
@@ -342,11 +342,142 @@ public class SchemasRoot extends BorderPane {
                     tableRow.setStyle("-fx-background-color: #FAFAFA;");
                     tableRow.setCursor(Cursor.HAND);
 
-                    tableRow.setOnMouseEntered(ev ->
-                            tableRow.setStyle("-fx-background-color: #EEF3FF;"));
-                    tableRow.setOnMouseExited(ev ->
-                            tableRow.setStyle("-fx-background-color: #FAFAFA;"));
-                    tableRow.setOnMouseClicked(ev -> ev.consume());
+                    tableRow.setOnMouseEntered(ev -> tableRow.setStyle("-fx-background-color: #EEF3FF;"));
+                    tableRow.setOnMouseExited(ev -> tableRow.setStyle("-fx-background-color: #FAFAFA;"));
+
+                    // ── Right-click context menu ───────────────────────────
+                    ContextMenu tableMenu = new ContextMenu();
+                    tableMenu.setStyle(
+                            "-fx-background-color: white; -fx-background-radius: 8;" +
+                                    "-fx-border-radius: 8; -fx-border-color: #E0E0E0; -fx-padding: 4;" +
+                                    "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);"
+                    );
+
+                    MenuItem showDataMI  = makeMenuItem("Show Data");
+                    String schemaName = schema.getName();
+                    if (!remote) {
+                        MenuItem crudMI = makeMenuItem("CRUD Operations");
+                        MenuItem codeMI = makeMenuItem("Generate Login Code");
+                        MenuItem editMI = makeMenuItem("Edit Table");
+                        MenuItem deleteMI = makeMenuItem("Delete Table");
+                        deleteMI.setStyle(deleteMI.getStyle() + "-fx-text-fill: #c0392b;");
+
+                        tableMenu.getItems().addAll(showDataMI, crudMI, codeMI, new SeparatorMenuItem(), editMI, deleteMI);
+
+
+                        crudMI.setOnAction(ev -> {
+                            selectedTab = schemaRow;
+                            isRemoteSelected = remote;
+                            setCenter(new TableCRUD(this, schemaName, table));
+                        });
+
+                        codeMI.setOnAction(ev -> {
+                            selectedTab = schemaRow;
+                            isRemoteSelected = remote;
+                            setCenter(new LoginGen(this, schemaName, table));
+                        });
+
+                        editMI.setOnAction(ev -> {
+                            selectedTab = schemaRow;
+                            isRemoteSelected = remote;
+                            Schema fullSchema = db.GetTablesInSchema(schemaName);
+                            List<String> pks = new ArrayList<>();
+                            for (Table t : fullSchema.getTables()) {
+                                for (Field f : t.getFields()) {
+                                    if (f.isPrimary()) pks.add(t.getName() + "(" + f.getName() + ")");
+                                }
+                            }
+                            setCenter(new TableEdit(this, schemaName, table, pks));
+                        });
+
+                        deleteMI.setOnAction(ev -> {
+                            Dialog<ButtonType> dialog = new Dialog<>();
+                            dialog.setTitle("Delete Table");
+                            dialog.setHeaderText(null);
+
+                            ButtonType deleteButtonType = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+                            dialog.getDialogPane().getButtonTypes().addAll(deleteButtonType, ButtonType.CANCEL);
+
+                            Label headerLabel = new Label("Delete Table");
+                            headerLabel.setTextFill(Color.WHITE);
+                            headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+                            HBox headerBox = new HBox(headerLabel);
+                            headerBox.setPadding(new Insets(10, 12, 10, 12));
+                            headerBox.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
+
+                            Label warning = new Label("This will permanently delete the table and all its data.");
+                            warning.setStyle("-fx-text-fill: #444;");
+                            Label instruction = new Label("Type '" + table.getName() + "' to confirm:");
+                            instruction.setStyle("-fx-font-weight: 600;");
+                            TextField input = new TextField();
+                            input.setPromptText(table.getName());
+                            input.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-color: #CCCCCC; -fx-padding: 6;");
+
+                            VBox content = new VBox(10);
+                            content.setPadding(new Insets(12));
+                            String connections = db.getTableConnections(schemaName, table.getName());
+                            if (!connections.isEmpty()) {
+                                Label connLabel = new Label("Warning: Foreign Key Connections Found");
+                                connLabel.setStyle("-fx-text-fill: #c0392b; -fx-font-weight: bold;");
+
+                                TextArea connArea = new TextArea(connections);
+                                connArea.setEditable(false);
+                                connArea.setPrefHeight(100);
+                                connArea.setStyle("-fx-font-family: 'Monospace'; -fx-font-size: 11px;");
+                                content.getChildren().addAll(connLabel, connArea, new Separator());
+                            }
+                            content.getChildren().addAll(warning, instruction, input);
+
+                            VBox dialogWrapper = new VBox(headerBox, content);
+                            dialogWrapper.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
+                            dialog.getDialogPane().setContent(dialogWrapper);
+
+                            Node deleteButton = dialog.getDialogPane().lookupButton(deleteButtonType);
+                            Node cancelButton = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+                            deleteButton.setDisable(true);
+                            deleteButton.setStyle("-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
+                            cancelButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47; -fx-font-weight: 600;");
+
+                            input.textProperty().addListener((obs, oldVal, newVal) -> {
+                                boolean valid = newVal.equals(table.getName());
+                                deleteButton.setDisable(!valid);
+                                deleteButton.setStyle(valid
+                                        ? "-fx-background-color: #c0392b; -fx-text-fill: white; -fx-background-radius: 6; -fx-cursor: hand;"
+                                        : "-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
+                            });
+
+                            Optional<ButtonType> result = dialog.showAndWait();
+                            if (result.isPresent() && result.get() == deleteButtonType) {
+                                PREFS.remove(schemaName + "|" + table.getName());
+                                db.deleteTable(new Schema(schemaName), table);
+                                createTables();
+                                refresh();
+                            }
+                        });
+                    }else {
+                        tableMenu.getItems().add(showDataMI);
+                    }
+
+                    showDataMI.setOnAction(ev -> {
+                        if (selectedTab != schemaRow) {
+                            if (selectedTab != null) {
+                                Label prevName = (Label) selectedTab.getChildren().get(1);
+                                applyDefaultStyle(selectedTab, prevName);
+                            }
+                            applySelectedStyle(schemaRow, nameLabel);
+                            selectedTab = schemaRow;
+                            isRemoteSelected = remote;
+                            createTables();
+                        }
+                        showTableData(schemaName, table);
+                    });
+
+                    tableRow.setOnMouseClicked(ev -> {
+                        if (ev.getButton() == MouseButton.SECONDARY) {
+                            tableMenu.show(tableRow, ev.getScreenX(), ev.getScreenY());
+                        }
+                        ev.consume();
+                    });
 
                     tableList.getChildren().add(tableRow);
                 }
@@ -403,74 +534,114 @@ public class SchemasRoot extends BorderPane {
                                 "-fx-border-radius: 8; -fx-border-color: #E0E0E0; -fx-padding: 4;" +
                                 "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);"
                 );
-                MenuItem deleteItem = new MenuItem("Delete " + schema.getName());
-                deleteItem.setOnAction(event -> {
-                    Dialog<ButtonType> dialog = new Dialog<>();
-                    dialog.setTitle("Delete Schema");
-                    dialog.setHeaderText(null);
 
-                    ButtonType deleteButtonType =
-                            new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
-                    dialog.getDialogPane().getButtonTypes()
-                            .addAll(deleteButtonType, ButtonType.CANCEL);
-
-                    Label header = new Label("Delete Schema");
-                    header.setTextFill(Color.WHITE);
-                    header.setFont(Font.font("System", FontWeight.BOLD, 14));
-                    HBox headerBox = new HBox(header);
-                    headerBox.setPadding(new Insets(10, 12, 10, 12));
-                    headerBox.setStyle(
-                            "-fx-background-color: #2E5A47;" +
-                                    "-fx-background-radius: 8 8 0 0;");
-
-                    Label warning = new Label(
-                            "This will permanently delete the schema and all its tables.");
-                    warning.setStyle("-fx-text-fill: #444;");
-                    Label instruction = new Label(
-                            "Type '" + schema.getName() + "' to confirm:");
-                    instruction.setStyle("-fx-font-weight: 600;");
-                    TextField input = new TextField();
-                    input.setPromptText(schema.getName());
-                    input.setStyle(
-                            "-fx-background-radius: 6; -fx-border-radius: 6;" +
-                                    "-fx-border-color: #CCCCCC; -fx-padding: 6;");
-
-                    VBox content = new VBox(10, warning, instruction, input);
-                    content.setPadding(new Insets(12));
-                    VBox dialogWrapper = new VBox(headerBox, content);
-                    dialogWrapper.setStyle(
-                            "-fx-background-color: white; -fx-background-radius: 8;");
-                    dialog.getDialogPane().setContent(dialogWrapper);
-
-                    Node deleteButton =
-                            dialog.getDialogPane().lookupButton(deleteButtonType);
-                    Node cancelButton =
-                            dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
-                    deleteButton.setDisable(true);
-                    deleteButton.setStyle(
-                            "-fx-background-color: #CCCCCC;" +
-                                    "-fx-text-fill: white; -fx-background-radius: 6;");
-                    cancelButton.setStyle(
-                            "-fx-background-color: transparent;" +
-                                    "-fx-text-fill: #2E5A47; -fx-font-weight: 600;");
-
-                    input.textProperty().addListener((obs, oldVal, newVal) -> {
-                        boolean valid = newVal.equals(schema.getName());
-                        deleteButton.setDisable(!valid);
-                        deleteButton.setStyle(valid
-                                ? "-fx-background-color: #c0392b; -fx-text-fill: white; -fx-background-radius: 6;"
-                                : "-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
+                if (remote) {
+                    // ── Remote schema: Clone to Local ─────────────────────
+                    MenuItem cloneItem = new MenuItem("Clone to Local");
+                    cloneItem.setOnAction(event -> {
+                        new Thread(() -> {
+                            String result = db.CloneSchemaFromRemote(schema.getName());
+                            Platform.runLater(() -> {
+                                refresh();
+                                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                                alert.setTitle("Clone Complete");
+                                alert.setHeaderText(null);
+                                alert.setContentText(result);
+                                alert.showAndWait();
+                            });
+                        }).start();
                     });
+                    contextMenu.getItems().add(cloneItem);
 
-                    Optional<ButtonType> result = dialog.showAndWait();
-                    if (result.isPresent() && result.get() == deleteButtonType) {
-                        db.deleteSchema(schema);
-                        ((Pane) wrapper.getParent()).getChildren().remove(wrapper);
-                        schemaWrappers.remove(wrapper);
-                        refresh();
+                } else {
+                    // ── Local schema: Push to Remote (if connected) + Delete ──
+                    if (creds.hasRemote()) {
+                        MenuItem pushItem = new MenuItem("Push to Remote");
+                        pushItem.setOnAction(event -> {
+                            new Thread(() -> {
+                                String result = db.PushSchemaToRemote(schema.getName());
+                                Platform.runLater(() -> {
+                                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                                    alert.setTitle("Push to Remote");
+                                    alert.setHeaderText(null);
+                                    alert.setContentText(result);
+                                    alert.showAndWait();
+                                });
+                            }).start();
+                        });
+                        contextMenu.getItems().add(pushItem);
                     }
-                });
-                contextMenu.getItems().add(deleteItem);
+
+                    MenuItem deleteItem = new MenuItem("Delete " + schema.getName());
+                    deleteItem.setOnAction(event -> {
+                        Dialog<ButtonType> dialog = new Dialog<>();
+                        dialog.setTitle("Delete Schema");
+                        dialog.setHeaderText(null);
+
+                        ButtonType deleteButtonType =
+                                new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+                        dialog.getDialogPane().getButtonTypes()
+                                .addAll(deleteButtonType, ButtonType.CANCEL);
+
+                        Label header = new Label("Delete Schema");
+                        header.setTextFill(Color.WHITE);
+                        header.setFont(Font.font("System", FontWeight.BOLD, 14));
+                        HBox headerBox = new HBox(header);
+                        headerBox.setPadding(new Insets(10, 12, 10, 12));
+                        headerBox.setStyle(
+                                "-fx-background-color: #2E5A47;" +
+                                        "-fx-background-radius: 8 8 0 0;");
+
+                        Label warning = new Label(
+                                "This will permanently delete the schema and all its tables.");
+                        warning.setStyle("-fx-text-fill: #444;");
+                        Label instruction = new Label(
+                                "Type '" + schema.getName() + "' to confirm:");
+                        instruction.setStyle("-fx-font-weight: 600;");
+                        TextField input = new TextField();
+                        input.setPromptText(schema.getName());
+                        input.setStyle(
+                                "-fx-background-radius: 6; -fx-border-radius: 6;" +
+                                        "-fx-border-color: #CCCCCC; -fx-padding: 6;");
+
+                        VBox content = new VBox(10, warning, instruction, input);
+                        content.setPadding(new Insets(12));
+                        VBox dialogWrapper = new VBox(headerBox, content);
+                        dialogWrapper.setStyle(
+                                "-fx-background-color: white; -fx-background-radius: 8;");
+                        dialog.getDialogPane().setContent(dialogWrapper);
+
+                        Node deleteButton =
+                                dialog.getDialogPane().lookupButton(deleteButtonType);
+                        Node cancelButton =
+                                dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+                        deleteButton.setDisable(true);
+                        deleteButton.setStyle(
+                                "-fx-background-color: #CCCCCC;" +
+                                        "-fx-text-fill: white; -fx-background-radius: 6;");
+                        cancelButton.setStyle(
+                                "-fx-background-color: transparent;" +
+                                        "-fx-text-fill: #2E5A47; -fx-font-weight: 600;");
+
+                        input.textProperty().addListener((obs, oldVal, newVal) -> {
+                            boolean valid = newVal.equals(schema.getName());
+                            deleteButton.setDisable(!valid);
+                            deleteButton.setStyle(valid
+                                    ? "-fx-background-color: #c0392b; -fx-text-fill: white; -fx-background-radius: 6;"
+                                    : "-fx-background-color: #CCCCCC; -fx-text-fill: white; -fx-background-radius: 6;");
+                        });
+
+                        Optional<ButtonType> result = dialog.showAndWait();
+                        if (result.isPresent() && result.get() == deleteButtonType) {
+                            db.deleteSchema(schema);
+                            ((Pane) wrapper.getParent()).getChildren().remove(wrapper);
+                            schemaWrappers.remove(wrapper);
+                            refresh();
+                        }
+                    });
+                    contextMenu.getItems().add(deleteItem);
+                }
+
                 contextMenu.show(schemaRow, e.getScreenX(), e.getScreenY());
             }
         });
@@ -478,7 +649,7 @@ public class SchemasRoot extends BorderPane {
         return wrapper;
     }
 
-    // ── Style helpers — Label instead of Text now ──────────────────────
+    // ── Style helpers ──────────────────────────────────────────────────
     private void applySelectedStyle(HBox row, Label label) {
         row.setStyle("-fx-background-color: #E3EDFF;");
         label.setStyle("-fx-text-fill: #1755B0; -fx-font-weight: bold;");
@@ -488,6 +659,7 @@ public class SchemasRoot extends BorderPane {
         row.setStyle("-fx-background-color: transparent;");
         label.setStyle("-fx-text-fill: #222222; -fx-font-weight: normal;");
     }
+
     private void resortSection(VBox section, boolean ascending) {
         List<Node> items = new ArrayList<>(section.getChildren());
         items.sort((a, b) -> {
@@ -498,6 +670,7 @@ public class SchemasRoot extends BorderPane {
         });
         section.getChildren().setAll(items);
     }
+
     public void createTables() {
         mainSplit = null;
         dataTabPane.getTabs().clear();
@@ -508,7 +681,6 @@ public class SchemasRoot extends BorderPane {
                 ? (String) selectedTab.getUserData()
                 : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
-        // ← Only change: route to remote or local methods
         Schema schema       = isRemoteSelected
                 ? db.GetTablesInSchemaRemote(selectedSchema)
                 : db.GetTablesInSchema(selectedSchema);
@@ -576,14 +748,12 @@ public class SchemasRoot extends BorderPane {
                 "-fx-selection-bar: #EAEAEA;" +
                 "-fx-selection-bar-text: #333333;");
 
-
         MenuItem showDataItem  = makeMenuItem("Show Data");
         MenuItem crudItem = makeMenuItem("CRUD Operations");
         MenuItem codeItem = makeMenuItem("Generate Login Code");
         MenuItem editItem = makeMenuItem("Edit Table");
         MenuItem deleteItem = makeMenuItem("Delete Table");
         deleteItem.setStyle(deleteItem.getStyle() + "-fx-text-fill: #c0392b;");
-
 
         menu.getItems().addAll(showDataItem, crudItem, codeItem, new SeparatorMenuItem(), editItem, deleteItem);
 
@@ -715,7 +885,6 @@ public class SchemasRoot extends BorderPane {
         return card;
     }
 
-    // Helper to create consistently styled menu items
     private MenuItem makeMenuItem(String text) {
         MenuItem item = new MenuItem(text);
         item.setStyle("-fx-font-size: 12px; -fx-padding: 6 12 6 12;");
@@ -893,17 +1062,14 @@ public class SchemasRoot extends BorderPane {
 
             if (fkCard == pkCard) { drawSelfLoop(overlay, fcB, fkRowB, pkRowB); continue; }
 
-            // 4-sided port selection
             double[] pts = portPoints(fcB, pcB, fkRowB.getCenterY(), pkRowB.getCenterY());
             double sx=pts[0], sy=pts[1], ex=pts[2], ey=pts[3];
             double sdx=pts[4], sdy=pts[5], edx=pts[6], edy=pts[7];
 
-            // Control points tangent to exit/entry direction
             double d = Math.max(Math.hypot(ex-sx, ey-sy) * 0.45, 70);
             double cp1x=sx+sdx*d, cp1y=sy+sdy*d;
             double cp2x=ex+edx*d, cp2y=ey+edy*d;
 
-            // Obstacle avoidance along the correct axis
             double[] r = routeAround(sx,sy,cp1x,cp1y,cp2x,cp2y,ex,ey,
                     sdx,sdy, fkCard,pkCard,stack);
             cp1x=r[0]; cp1y=r[1]; cp2x=r[2]; cp2y=r[3];
@@ -946,7 +1112,7 @@ public class SchemasRoot extends BorderPane {
     private double estimateCardHeight(String tableName, List<Table> tables) {
         for (Table t : tables) {
             if (t.getName().equals(tableName)) {
-                return 36 + t.getFields().size() * 31 + 4; // header + rows + padding
+                return 36 + t.getFields().size() * 31 + 4;
             }
         }
         return 160;
@@ -996,7 +1162,6 @@ public class SchemasRoot extends BorderPane {
     }
 
     private double[] portPoints(Bounds fc, Bounds pc, double fkRowY, double pkRowY) {
-        // Clamp row Y inside its card's header+body range
         fkRowY = Math.max(fc.getMinY()+18, Math.min(fc.getMaxY()-6, fkRowY));
         pkRowY = Math.max(pc.getMinY()+18, Math.min(pc.getMaxY()-6, pkRowY));
 
@@ -1005,7 +1170,6 @@ public class SchemasRoot extends BorderPane {
 
         double sx, sy, ex, ey, sdx, sdy, edx, edy;
 
-        // Use left/right when connection is more horizontal than vertical (60° threshold)
         if (Math.abs(dx) >= Math.abs(dy) * 0.58) {
             if (dx >= 0) {
                 sx=fc.getMaxX(); sy=fkRowY; sdx= 1; sdy=0;
@@ -1015,7 +1179,6 @@ public class SchemasRoot extends BorderPane {
                 ex=pc.getMaxX(); ey=pkRowY; edx= 1; edy=0;
             }
         } else {
-            // Use top/bottom when connection is more vertical
             if (dy >= 0) {
                 sx=fc.getCenterX(); sy=fc.getMaxY(); sdx=0; sdy= 1;
                 ex=pc.getCenterX(); ey=pc.getMinY(); edx=0; edy=-1;
@@ -1037,8 +1200,8 @@ public class SchemasRoot extends BorderPane {
         final int    SAMPLES = 36;
         boolean horizontal = Math.abs(exitDx) > Math.abs(exitDy);
 
-        double needPos = 0; // push in positive axis direction
-        double needNeg = 0; // push in negative axis direction
+        double needPos = 0;
+        double needNeg = 0;
 
         for (VBox card : cardNodeMap.values()) {
             if (card == fkCard || card == pkCard) continue;
@@ -1047,12 +1210,10 @@ public class SchemasRoot extends BorderPane {
             double bx1=b.getMinX()-MARGIN, bx2=b.getMaxX()+MARGIN;
             double by1=b.getMinY()-MARGIN, by2=b.getMaxY()+MARGIN;
 
-            // Quick AABB pre-cull against the bounding box of the connection
             double connMinX=Math.min(sx,ex)-80, connMaxX=Math.max(sx,ex)+80;
             double connMinY=Math.min(sy,ey)-80, connMaxY=Math.max(sy,ey)+80;
             if (bx2<connMinX || bx1>connMaxX || by2<connMinY || by1>connMaxY) continue;
 
-            // Sample the current bezier for intersections
             double hitSum = 0; int hits = 0;
             double maxPen = 0;
             for (int s=1; s<SAMPLES; s++) {
@@ -1074,13 +1235,12 @@ public class SchemasRoot extends BorderPane {
             double center = horizontal ? b.getCenterY() : b.getCenterX();
             double clearance = maxPen + 15;
 
-            if (avgHit <= center) needNeg = Math.max(needNeg, clearance); // push up / left
-            else                  needPos = Math.max(needPos, clearance); // push down / right
+            if (avgHit <= center) needNeg = Math.max(needNeg, clearance);
+            else                  needPos = Math.max(needPos, clearance);
         }
 
         if (needNeg == 0 && needPos == 0) return new double[]{cp1x,cp1y,cp2x,cp2y};
 
-        // Apply the smaller of the two required shifts
         double shift = (needNeg <= needPos || needPos == 0) ? -needNeg : needPos;
         if (horizontal) { cp1y += shift; cp2y += shift; }
         else            { cp1x += shift; cp2x += shift; }
@@ -1095,10 +1255,8 @@ public class SchemasRoot extends BorderPane {
 
     private Polygon buildArrow(double tipX, double tipY, double angleRad) {
         double s  = 9.0;
-        // Back-centre of the arrowhead
         double bx = tipX - Math.cos(angleRad) * s;
         double by = tipY - Math.sin(angleRad) * s;
-        // Perpendicular wing offset
         double wx = -Math.sin(angleRad) * (s * 0.45);
         double wy =  Math.cos(angleRad) * (s * 0.45);
         Polygon arrow = new Polygon(
@@ -1115,7 +1273,6 @@ public class SchemasRoot extends BorderPane {
             String current = (String) selectedTab.getUserData();
             if (!schemas.contains(current)) selectedTab = null;
         }
-        createSide();
         createTables();
     }
 
@@ -1150,17 +1307,15 @@ public class SchemasRoot extends BorderPane {
         Set<String> tableNames = new HashSet<>(pos.keySet());
         List<String> names = new ArrayList<>(tableNames);
 
-        // ↓ Stronger attraction pulls connected tables close; repulsion prevents overlap
         final double IDEAL   = 300;
-        final double ATTRACT = 0.12;   // was 0.03 — 4× stronger
-        final double REPEL   = 90_000; // was 80,000
-        final int    ITERS   = 500;    // was 350
+        final double ATTRACT = 0.12;
+        final double REPEL   = 90_000;
+        final int    ITERS   = 500;
 
         for (int iter=0; iter<ITERS; iter++) {
             Map<String,double[]> forces = new HashMap<>();
             for (String n2 : names) forces.put(n2, new double[]{0,0});
 
-            // Repulsion
             for (int i=0; i<names.size(); i++) {
                 for (int j=i+1; j<names.size(); j++) {
                     String a=names.get(i), b=names.get(j);
@@ -1173,7 +1328,6 @@ public class SchemasRoot extends BorderPane {
                 }
             }
 
-            // Attraction along FK edges
             for (String[] fk : foreignKeys) {
                 String a=fk[0], b=fk[2];
                 if (a.equals(b)||!tableNames.contains(a)||!tableNames.contains(b)) continue;
@@ -1185,7 +1339,6 @@ public class SchemasRoot extends BorderPane {
                 forces.get(b)[0]-=dx/dist*f; forces.get(b)[1]-=dy/dist*f;
             }
 
-            // Apply with cooling
             double cool=Math.max(1.0-(double)iter/ITERS, 0.01);
             double maxStep=55*cool+3;
             for (String name : names) {

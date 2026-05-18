@@ -2,8 +2,6 @@ package globalfuncs;
 
 import java.sql.*;
 import java.util.*;
-import java.util.prefs.BackingStoreException;
-import java.util.prefs.Preferences;
 
 import Objects.*;
 
@@ -70,7 +68,6 @@ public class db {
         String tablesQuery =
                 "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?";
 
-        // Join KEY_COLUMN_USAGE so FK reference lands on the Field in one pass
         String colQuery =
                 "SELECT c.COLUMN_NAME, c.DATA_TYPE, c.COLUMN_KEY, " +
                         "       k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME " +
@@ -579,4 +576,373 @@ public class db {
         return rows;
     }
 
+    // =========================================================================
+    // Clone & Push
+    // =========================================================================
+
+    /**
+     * Copies a remote schema (structure + data) to the local MySQL instance.
+     * Any existing local schema with the same name is dropped first so the
+     * clone is always a clean snapshot.
+     *
+     * @param schemaName  name of the remote schema to clone
+     * @return  human-readable summary, or an error message
+     */
+    public static String CloneSchemaFromRemote(String schemaName) {
+        System.out.println("[CLONE] Starting clone of remote schema: " + schemaName);
+
+        Schema remoteSchema      = GetTablesInSchemaRemote(schemaName);
+        List<String[]> remoteFKs = GetForeignKeysRemote(schemaName);
+
+        if (remoteSchema.getTables().isEmpty()) {
+            return "WARNING: Remote schema '" + schemaName + "' has no tables or could not be read.";
+        }
+
+        // ── 1. Drop + recreate locally (always a clean copy) ──────────────
+        try (Connection localConn = Connect();
+             Statement   stmt     = localConn.createStatement()) {
+
+            stmt.executeUpdate("DROP DATABASE IF EXISTS `" + schemaName + "`");
+            stmt.executeUpdate("CREATE DATABASE `" + schemaName + "`");
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
+
+            for (Table table : remoteSchema.getTables()) {
+                StringBuilder q = new StringBuilder(
+                        "CREATE TABLE `" + schemaName + "`.`" + table.getName() + "` (");
+                List<String> fkClauses = new ArrayList<>();
+
+                for (Field field : table.getFields()) {
+                    q.append("`").append(field.getName()).append("` ").append(normalizeSqlType(field.getType()));
+
+                    if (field.isPrimary()) q.append(" PRIMARY KEY AUTO_INCREMENT");
+                    q.append(", ");
+
+                    String ref = field.getReference();
+                    if (ref != null && !ref.isEmpty()) {
+                        int    paren  = ref.indexOf('(');
+                        String refTbl = ref.substring(0, paren);
+                        String refCol = ref.substring(paren + 1, ref.length() - 1);
+                        fkClauses.add("FOREIGN KEY (`" + field.getName() + "`) " +
+                                "REFERENCES `" + schemaName + "`.`" + refTbl + "`(`" + refCol + "`)");
+                    }
+                }
+
+                for (String fk : fkClauses) q.append(fk).append(", ");
+                q.setLength(q.length() - 2);
+                q.append(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                System.out.println("[CLONE DDL] " + q);
+                stmt.executeUpdate(q.toString());
+            }
+
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
+
+        } catch (SQLException e) {
+            System.err.println("[CLONE ERROR] DDL phase — " + e.getMessage());
+            return "ERROR (structure): " + e.getMessage();
+        }
+
+        // ── 2. Copy data — parent tables first so FK constraints are satisfied ──
+        List<Table> ordered = topoSort(remoteSchema.getTables(), remoteFKs);
+        int totalRows = 0;
+
+        try (Connection localConn  = Connect();
+             Connection remoteConn = ConnectRemote()) {
+
+            localConn.setAutoCommit(false);
+
+            try (Statement s = localConn.createStatement()) { s.execute("SET FOREIGN_KEY_CHECKS = 0"); }
+
+            for (Table table : ordered) {
+                List<String>   columns = new ArrayList<>();
+                List<String[]> rows    = new ArrayList<>();
+
+                String sel = "SELECT * FROM `" + schemaName + "`.`" + table.getName() + "`";
+                try (Statement rs2 = remoteConn.createStatement();
+                     ResultSet rs  = rs2.executeQuery(sel)) {
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int colCount = meta.getColumnCount();
+                    for (int i = 1; i <= colCount; i++) columns.add(meta.getColumnName(i));
+                    while (rs.next()) {
+                        String[] row = new String[colCount];
+                        for (int i = 1; i <= colCount; i++) row[i - 1] = rs.getString(i);
+                        rows.add(row);
+                    }
+                }
+
+                if (rows.isEmpty()) continue;
+
+                StringBuilder ins = new StringBuilder(
+                        "INSERT INTO `" + schemaName + "`.`" + table.getName() + "` (");
+                for (int i = 0; i < columns.size(); i++) {
+                    ins.append("`").append(columns.get(i)).append("`");
+                    if (i < columns.size() - 1) ins.append(", ");
+                }
+                ins.append(") VALUES (");
+                ins.append("?,".repeat(columns.size()));
+                ins.setLength(ins.length() - 1);
+                ins.append(")");
+
+                try (PreparedStatement ps = localConn.prepareStatement(ins.toString())) {
+                    for (String[] row : rows) {
+                        for (int i = 0; i < row.length; i++) ps.setString(i + 1, row[i]);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+
+                totalRows += rows.size();
+                System.out.println("[CLONE DATA] " + table.getName() + " — " + rows.size() + " rows");
+            }
+
+            try (Statement s = localConn.createStatement()) { s.execute("SET FOREIGN_KEY_CHECKS = 1"); }
+            localConn.commit();
+
+        } catch (SQLException e) {
+            System.err.println("[CLONE ERROR] Data phase — " + e.getMessage());
+            return "ERROR (data copy): " + e.getMessage();
+        }
+
+        return "Cloned '" + schemaName + "' — "
+                + remoteSchema.getTables().size() + " table(s), "
+                + totalRows + " row(s) copied.";
+    }
+
+    /**
+     * Pushes local schema structural changes to the remote server.
+     * Creates missing tables, adds/modifies columns that differ.
+     * Columns removed locally are intentionally left on the remote to
+     * prevent accidental data loss — drop them manually if needed.
+     * Row data is never pushed automatically.
+     *
+     * @param schemaName  name of the local schema to push
+     * @return  human-readable summary, or an error message
+     */
+    public static String PushSchemaToRemote(String schemaName) {
+        Schema local  = GetTablesInSchema(schemaName);
+        Schema remote = GetTablesInSchemaRemote(schemaName);
+
+        if (local.getTables().isEmpty())
+            return "WARNING: Local schema '" + schemaName + "' has no tables.";
+
+        Map<String, Table> remoteTables = new HashMap<>();
+        for (Table t : remote.getTables()) remoteTables.put(t.getName().toLowerCase(), t);
+
+        StringBuilder log = new StringBuilder();
+
+        try (Connection remoteConn = ConnectRemote();
+             Statement  stmt       = remoteConn.createStatement()) {
+
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + schemaName + "`");
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
+
+            for (Table localTable : local.getTables()) {
+                String key = localTable.getName().toLowerCase();
+
+                if (!remoteTables.containsKey(key)) {
+                    // ── Table absent on remote → CREATE ───────────────────
+                    StringBuilder q = new StringBuilder(
+                            "CREATE TABLE IF NOT EXISTS `" + schemaName + "`.`" + localTable.getName() + "` (");
+                    List<String> fkClauses = new ArrayList<>();
+
+                    for (Field f : localTable.getFields()) {
+                        q.append("`").append(f.getName()).append("` ").append(normalizeSqlType(f.getType()));
+                        if (f.isPrimary()) q.append(" PRIMARY KEY AUTO_INCREMENT");
+                        q.append(", ");
+
+                        String ref = f.getReference();
+                        if (ref != null && !ref.isEmpty()) {
+                            int    paren  = ref.indexOf('(');
+                            String refTbl = ref.substring(0, paren);
+                            String refCol = ref.substring(paren + 1, ref.length() - 1);
+                            fkClauses.add("FOREIGN KEY (`" + f.getName() + "`) " +
+                                    "REFERENCES `" + schemaName + "`.`" + refTbl + "`(`" + refCol + "`)");
+                        }
+                    }
+
+                    for (String fk : fkClauses) q.append(fk).append(", ");
+                    q.setLength(q.length() - 2);
+                    q.append(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                    System.out.println("[PUSH DDL] " + q);
+                    stmt.executeUpdate(q.toString());
+                    log.append("Created table: ").append(localTable.getName()).append("\n");
+
+                } else {
+                    // ── Table present → diff columns ──────────────────────
+                    Table remoteTable = remoteTables.get(key);
+                    Map<String, String> remoteColTypes = new HashMap<>();
+                    for (Field f : remoteTable.getFields())
+                        remoteColTypes.put(f.getName().toLowerCase(), f.getType().toLowerCase());
+
+                    for (Field localField : localTable.getFields()) {
+                        if (localField.isPrimary()) continue;
+                        if (localField.getName() == null || localField.getName().isBlank()) continue;
+
+                        String colKey  = localField.getName().toLowerCase();
+                        String sqlType = localField.getType();
+                        if (sqlType == null || sqlType.isBlank()) continue;
+
+                        if (!remoteColTypes.containsKey(colKey)) {
+                            String sql = "ALTER TABLE `" + schemaName + "`.`" + localTable.getName() +
+                                    "` ADD COLUMN `" + localField.getName() + "` " + sqlType;
+                            System.out.println("[PUSH ALTER] " + sql);
+                            stmt.executeUpdate(sql);
+                            log.append("Added column: ")
+                                    .append(localTable.getName()).append(".").append(localField.getName()).append("\n");
+
+                        } else if (!remoteColTypes.get(colKey).equalsIgnoreCase(sqlType)) {
+                            String sql = "ALTER TABLE `" + schemaName + "`.`" + localTable.getName() +
+                                    "` MODIFY COLUMN `" + localField.getName() + "` " + sqlType;
+                            System.out.println("[PUSH ALTER] " + sql);
+                            stmt.executeUpdate(sql);
+                            log.append("Modified: ")
+                                    .append(localTable.getName()).append(".").append(localField.getName())
+                                    .append(" → ").append(sqlType).append("\n");
+                        }
+                    }
+                }
+            }
+
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
+
+        } catch (SQLException e) {
+            System.err.println("[PUSH ERROR] " + e.getMessage());
+            return "ERROR: " + e.getMessage();
+        }
+
+        // ── 3. Sync row data (upsert local → remote) ──────────────────────────
+        try (Connection localConn  = Connect();
+             Connection remoteConn = ConnectRemote()) {
+
+            remoteConn.setAutoCommit(false);
+
+            try (Statement s = remoteConn.createStatement()) {
+                s.execute("SET FOREIGN_KEY_CHECKS = 0");
+            }
+
+            for (Table localTable : local.getTables()) {
+                // Fetch all local rows
+                List<String>   columns = new ArrayList<>();
+                List<String[]> rows    = new ArrayList<>();
+
+                String sel = "SELECT * FROM `" + schemaName + "`.`" + localTable.getName() + "`";
+                try (Statement st = localConn.createStatement();
+                     ResultSet rs = st.executeQuery(sel)) {
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int colCount = meta.getColumnCount();
+                    for (int i = 1; i <= colCount; i++) columns.add(meta.getColumnName(i));
+                    while (rs.next()) {
+                        String[] row = new String[colCount];
+                        for (int i = 1; i <= colCount; i++) row[i - 1] = rs.getString(i);
+                        rows.add(row);
+                    }
+                }
+
+                if (rows.isEmpty()) continue;
+
+                // Build INSERT ... ON DUPLICATE KEY UPDATE
+                // This inserts new rows and updates existing ones by PK — never deletes.
+                StringBuilder ins = new StringBuilder(
+                        "INSERT INTO `" + schemaName + "`.`" + localTable.getName() + "` (");
+                for (int i = 0; i < columns.size(); i++) {
+                    ins.append("`").append(columns.get(i)).append("`");
+                    if (i < columns.size() - 1) ins.append(", ");
+                }
+                ins.append(") VALUES (");
+                ins.append("?,".repeat(columns.size()));
+                ins.setLength(ins.length() - 1);
+                ins.append(") ON DUPLICATE KEY UPDATE ");
+
+                // Update every non-PK column on conflict
+                List<String> nonPkCols = new ArrayList<>();
+                for (Field f : localTable.getFields()) {
+                    if (!f.isPrimary()) nonPkCols.add(f.getName());
+                }
+                // Fallback: if we can't determine PKs, update all columns
+                List<String> updateCols = nonPkCols.isEmpty() ? columns : nonPkCols;
+                for (int i = 0; i < updateCols.size(); i++) {
+                    ins.append("`").append(updateCols.get(i)).append("` = VALUES(`")
+                            .append(updateCols.get(i)).append("`)");
+                    if (i < updateCols.size() - 1) ins.append(", ");
+                }
+
+                try (PreparedStatement ps = remoteConn.prepareStatement(ins.toString())) {
+                    for (String[] row : rows) {
+                        for (int i = 0; i < row.length; i++) ps.setString(i + 1, row[i]);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+
+                log.append("Synced data: ").append(localTable.getName())
+                        .append(" — ").append(rows.size()).append(" row(s)\n");
+            }
+
+            try (Statement s = remoteConn.createStatement()) {
+                s.execute("SET FOREIGN_KEY_CHECKS = 1");
+            }
+            remoteConn.commit();
+
+        } catch (SQLException e) {
+            System.err.println("[PUSH ERROR] Data sync — " + e.getMessage());
+            return "ERROR (data sync): " + e.getMessage();
+        }
+
+
+        return log.isEmpty()
+                ? "Remote schema '" + schemaName + "' is already up to date."
+                : log.toString().trim();
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Topological sort so parent tables are inserted before child tables.
+     * Cycles are tolerated — a visited guard prevents infinite recursion.
+     */
+    private static List<Table> topoSort(List<Table> tables, List<String[]> foreignKeys) {
+        Map<String, Set<String>> deps   = new HashMap<>();
+        Map<String, Table>       byName = new HashMap<>();
+
+        for (Table t : tables) {
+            deps.put(t.getName(), new HashSet<>());
+            byName.put(t.getName(), t);
+        }
+        for (String[] fk : foreignKeys) {
+            String child  = fk[0];   // table that holds the FK column
+            String parent = fk[2];   // table being referenced
+            if (!child.equals(parent) && deps.containsKey(child))
+                deps.get(child).add(parent);
+        }
+
+        List<Table> sorted  = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        for (Table t : tables)
+            topoVisit(t.getName(), deps, visited, sorted, byName);
+
+        return sorted;
+    }
+
+    private static void topoVisit(String name,
+                                  Map<String, Set<String>> deps,
+                                  Set<String> visited,
+                                  List<Table> sorted,
+                                  Map<String, Table> byName) {
+        if (visited.contains(name)) return;
+        visited.add(name);
+        for (String parent : deps.getOrDefault(name, Collections.emptySet()))
+            topoVisit(parent, deps, visited, sorted, byName);
+        if (byName.containsKey(name)) sorted.add(byName.get(name));
+    }
+
+    private static String normalizeSqlType(String rawType) {
+        if (rawType == null || rawType.isBlank()) return "VARCHAR(255)";
+        String t = rawType.trim();
+        // bare VARCHAR / CHAR / NVARCHAR need a length — default to 255
+        if (t.matches("(?i)varchar|char|nvarchar"))        return t + "(255)";
+        // bare DECIMAL / NUMERIC need precision & scale
+        if (t.matches("(?i)decimal|numeric"))              return t + "(10,2)";
+        return t;
+    }
 }
