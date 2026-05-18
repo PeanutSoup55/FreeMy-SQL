@@ -53,13 +53,10 @@ public class Root extends BorderPane {
                         "-fx-background-color: #FFFFFF;" +
                         "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
         vBox.setPrefWidth(260);
-        ImageView icon = new ImageView(new Image(getClass().getClassLoader().getResourceAsStream("assets/search.png")));
 
         HBox top = createTopHBox(creds.getInitials(), creds.getUser(), creds.getUrl(), true);
-        HBox search = createSearch(icon, "Search...");
 
         vBox.getChildren().add(top);
-        vBox.getChildren().add(search);
 
         for (int i = 0; i < LABELS.length; i++) {
             HBox item = createMenuItem(ICONS[i], LABELS[i], LABELS[i].equals(activeMenu), true);
@@ -149,24 +146,6 @@ public class Root extends BorderPane {
         HBox hbox = new HBox(12, avatar, info, spacer, arrowBtn);
         hbox.setAlignment(Pos.CENTER_LEFT);
         hbox.setPadding(new Insets(12, 12, 8, 12));
-        return hbox;
-    }
-
-    public HBox createSearch(ImageView icon, String search) {
-        Text label = new Text(search);
-        label.setFont(Font.font("System", 13));
-        label.setStyle("-fx-font-weight: bold;");
-        label.setFill(Color.web("#4A4A4A"));
-
-        icon.setFitHeight(22); icon.setFitWidth(22);
-
-        HBox hbox = new HBox(20, icon, label);
-        hbox.setAlignment(Pos.CENTER_LEFT);
-        hbox.setPadding(new Insets(14, 20, 14, 20));
-        hbox.setMinWidth(200);
-        hbox.setBackground(new Background(new BackgroundFill(
-                Color.web("#E9F5E8"), new CornerRadii(8), Insets.EMPTY)));
-        VBox.setMargin(hbox, new Insets(4, 10, 4, 10));
         return hbox;
     }
 
