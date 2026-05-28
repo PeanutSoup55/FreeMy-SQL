@@ -1,35 +1,17 @@
 # Current build
+<img width="1682" height="991" alt="image" src="https://github.com/user-attachments/assets/7ceaecab-a0a7-4711-9d32-bb7a2a271481" />
+<img width="1682" height="989" alt="image" src="https://github.com/user-attachments/assets/fee78d56-5985-4a76-91b1-4eb8b9a174c3" />
+<img width="1681" height="990" alt="image" src="https://github.com/user-attachments/assets/b9784b7f-ef35-45b9-971d-d8f3411cbf3a" />
+<img width="1680" height="992" alt="image" src="https://github.com/user-attachments/assets/eea8e43f-bae6-4013-ad40-1231d5a52847" />
+<img width="1682" height="990" alt="image" src="https://github.com/user-attachments/assets/1eaeb648-5e21-4d9c-9433-bfa709629b28" />
+<img width="1684" height="989" alt="image" src="https://github.com/user-attachments/assets/1b24c8e1-65ff-4931-8eba-7014134f2b58" />
+<img width="1683" height="990" alt="image" src="https://github.com/user-attachments/assets/924d05c6-4043-44a7-bdf9-637b886104e6" />
+<img width="1683" height="515" alt="image" src="https://github.com/user-attachments/assets/ef9358c5-7069-4dc0-aa2d-9123f8027dd8" />
+<img width="1684" height="993" alt="image" src="https://github.com/user-attachments/assets/b50cc107-9676-471f-b6c1-a5b03efa607b" />
+<img width="1682" height="574" alt="image" src="https://github.com/user-attachments/assets/f142bde1-5d5c-41a6-b8ad-40c7caf5eb5b" />
+<img width="258" height="713" alt="image" src="https://github.com/user-attachments/assets/e14734e4-0210-4d74-95d6-d2cfe6e0d859" />
+<img width="1123" height="813" alt="image" src="https://github.com/user-attachments/assets/0913dbb4-bbb8-44ae-bd3c-5a0b9912d916" />
 
-### Recent additions:
-- Creds changability
-- viewing raw table data
-- changing table fields
-- sql query page with history presistance
-- generalized logs page
-
-### Upcoming future updates:
-- finishing dashboard
-- adding a built in auth portal
-    - i want to add support for Java and React JS/TS for now
-    - it should be a plug and play import for applications
-- fixing the table connection lines. Math needs work if anyone wants to fork and give it a go
-
-## Cloning into IDE
-- add JDBC library
-- find your local MySQL username (most likely root)
-- find your url (most likely something like jdbc:mysql://localhost:3306?allowMultiQueries=true)
-- use local password
-- initials aren't important, just personalization
-
-<img width="975" height="575" alt="image" src="https://github.com/user-attachments/assets/1f5d5998-09c1-473a-a7b5-1dd110bef4ae" />
-<img width="975" height="574" alt="image" src="https://github.com/user-attachments/assets/6815e875-f7dd-4b6e-aa7c-1910be2f9a67" />
-<img width="975" height="718" alt="image" src="https://github.com/user-attachments/assets/0562530d-00f5-4faa-9391-48906fc9306b" />
-<img width="950" height="691" alt="image" src="https://github.com/user-attachments/assets/33912a25-89cf-4bc4-8b9a-38c3d83e7f96" />
-<img width="774" height="343" alt="image" src="https://github.com/user-attachments/assets/627cad53-3e1e-4b25-be53-24b0310c78f5" />
-<img width="975" height="274" alt="image" src="https://github.com/user-attachments/assets/e6e1d310-5153-4902-b177-2cf4a0efc48c" />
-<img width="975" height="498" alt="image" src="https://github.com/user-attachments/assets/6a5e12e2-5dcc-4e22-aefd-a3802ec6109f" />
-<img width="975" height="709" alt="image" src="https://github.com/user-attachments/assets/d22d7ac8-14d2-4d60-b47e-06427d622f71" />
-<img width="975" height="713" alt="image" src="https://github.com/user-attachments/assets/90cba754-9418-400c-b094-edf61cf1dfaf" />
 
 
 
