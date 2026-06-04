@@ -14,6 +14,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import tempFiles.TempCred;
 
 import java.util.Objects;
 
@@ -21,13 +22,14 @@ public class Root extends BorderPane {
 
     private boolean isCollapsed = false;
     private String  activeMenu = "Schemas";
-    private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs", "SSH"};
+    private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs", "SSH", "Send Feedback..."};
     private final String[] ICONS  = {
             "assets/schema.png",
             "assets/query.png",
             "assets/creds.png",
             "assets/logs.png",
-            "assets/ssh.png"
+            "assets/ssh.png",
+            "assets/feedback.png"
     };
     private SchemasRoot schemasRoot;
 
@@ -229,10 +231,8 @@ public class Root extends BorderPane {
                 if (schemasRoot == null) schemasRoot = new SchemasRoot();
                 setCenter(schemasRoot);
             }
-            case "Query" -> setCenter(new Query());
-            case "Credentials" -> setCenter(new Creds());
-            case "Logs" -> setCenter(new LogsRoot());
-            case "SSH" -> setCenter(new SSHConnection(() -> switchCenterContent("Schemas")));
+            case "Query", "Credentials", "Logs", "SSH" -> setCenter(new TempCred());
+            case "Send Feedback..." -> setCenter(new FeedbackDialog());
         }
     }
 }
