@@ -28,7 +28,8 @@ import java.util.Optional;
 public class Login extends HBox {
 
     private ComboBox<String> profileComboBox;
-    private TextField urlField;
+    private TextField hostField;
+    private TextField portField;
     private TextField nameField;
     private TextField passField;
     private TextField initialsField;
@@ -101,7 +102,7 @@ public class Login extends HBox {
         rightSide.setMinHeight(0);
         HBox.setHgrow(rightSide, Priority.ALWAYS);
 
-        Text title = new Text("GUI.Login with local Credentials");
+        Text title = new Text("Login with local Credentials");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
         title.setFill(Color.web("#1a1a1a"));
 
@@ -141,7 +142,6 @@ public class Login extends HBox {
                         "-fx-border-color: #d1d1d1; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;"
         ));
 
-        // Add Button Action Logic
         addProfileBtn.setOnAction(e -> {
             TextInputDialog dialog = new TextInputDialog();
             dialog.setTitle("New Connection Profile");
@@ -155,13 +155,13 @@ public class Login extends HBox {
                     if (!profileComboBox.getItems().contains(cleanName)) {
                         profileComboBox.getItems().add(cleanName);
                     }
-                    // Lock user onto newly generated selection instantly and clear input boxes
                     profileComboBox.setValue(cleanName);
-                    urlField.clear();
+                    hostField.clear();
+                    portField.clear();
                     nameField.clear();
                     passField.clear();
                     initialsField.clear();
-                    urlField.requestFocus();
+                    hostField.requestFocus();
                 }
             });
         });
@@ -171,13 +171,15 @@ public class Login extends HBox {
         profileRow.setAlignment(Pos.CENTER_LEFT);
         profileGroup.getChildren().addAll(profileLabel, profileRow);
 
-        VBox urlGroup  = createFieldGroup("MySQL URL");
-        urlField = (TextField) urlGroup.getChildren().get(1);
-        VBox nameGroup = createFieldGroup("MySQL Name");
+        VBox hostGroup = createFieldGroup("Host", "localhost");
+        hostField = (TextField) hostGroup.getChildren().get(1);
+        VBox portGroup = createFieldGroup("Port", "3306");
+        portField = (TextField) portGroup.getChildren().get(1);
+        VBox nameGroup = createFieldGroup("MySQL Username", "Value");
         nameField = (TextField) nameGroup.getChildren().get(1);
-        VBox passGroup = createFieldGroup("MySQL Password");
+        VBox passGroup = createFieldGroup("MySQL Password", "Value");
         passField = (TextField) passGroup.getChildren().get(1);
-        VBox initialsGroup = createFieldGroup("User Initials");
+        VBox initialsGroup = createFieldGroup("User Initials", "Value");
         initialsField = (TextField) initialsGroup.getChildren().get(1);
 
         rememberMeCheck = new CheckBox("Remember details for this profile");
@@ -196,13 +198,21 @@ public class Login extends HBox {
             String selectedProfile = profileComboBox.getValue();
             if (selectedProfile != null && !selectedProfile.isEmpty()) {
                 String[] details = creds.loadProfile(selectedProfile);
-                urlField.setText(details[0]);
+                // details[0] is the stored jdbc URL — parse host and port back out
+                parseUrlIntoFields(details[0]);
                 nameField.setText(details[1]);
                 initialsField.setText(details[2]);
             }
         });
 
         Button connectBtn = new Button("Connect");
+
+        hostField.setOnAction(e -> connectBtn.fire());
+        portField.setOnAction(e -> connectBtn.fire());
+        nameField.setOnAction(e -> connectBtn.fire());
+        passField.setOnAction(e -> connectBtn.fire());
+        initialsField.setOnAction(e -> connectBtn.fire());
+
         connectBtn.setPrefWidth(160);
         connectBtn.setStyle(
                 "-fx-background-color: #262626; -fx-text-fill: white; -fx-font-size: 13px;" +
@@ -218,18 +228,22 @@ public class Login extends HBox {
         ));
 
         connectBtn.setOnAction(e -> {
+            String host = hostField.getText().trim().isEmpty() ? "localhost" : hostField.getText().trim();
+            String port = portField.getText().trim().isEmpty() ? "3306" : portField.getText().trim();
+            String builtUrl = "jdbc:mysql://" + host + ":" + port + "/?allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true";
+
             String activeProfile = profileComboBox.getValue();
             if (activeProfile == null || activeProfile.trim().isEmpty()) {
                 activeProfile = "Default Profile";
             }
             creds.setRememberMe(rememberMeCheck.isSelected());
             if (rememberMeCheck.isSelected()) {
-                creds.saveProfile(activeProfile, urlField.getText(), nameField.getText(), initialsField.getText());
+                creds.saveProfile(activeProfile, builtUrl, nameField.getText(), initialsField.getText());
             } else {
                 creds.removeProfile(activeProfile);
             }
 
-            enterCreds(urlField.getText(), nameField.getText(), passField.getText(), initialsField.getText());
+            enterCreds(builtUrl, nameField.getText(), passField.getText(), initialsField.getText());
             Root root = new Root();
             Scene newScene = new Scene(root, 1700, 1000, Color.web("#F9F9F9"));
             Stage stage = (Stage) connectBtn.getScene().getWindow();
@@ -240,7 +254,7 @@ public class Login extends HBox {
         btnRow.setAlignment(Pos.CENTER);
         btnRow.setMaxWidth(300);
 
-        rightSide.getChildren().addAll(title, profileGroup, urlGroup, nameGroup, passGroup, initialsGroup, rememberMeCheck, btnRow);
+        rightSide.getChildren().addAll(title, profileGroup, hostGroup, portGroup, nameGroup, passGroup, initialsGroup, rememberMeCheck, btnRow);
 
         this.setMinWidth(0);
         this.setMinHeight(0);
@@ -255,6 +269,24 @@ public class Login extends HBox {
         });
     }
 
+    private void parseUrlIntoFields(String storedUrl) {
+        if (storedUrl == null || storedUrl.isEmpty()) {
+            hostField.clear();
+            portField.clear();
+            return;
+        }
+        try {
+            String stripped = storedUrl.replace("jdbc:mysql://", "");
+            String hostPort = stripped.split("/")[0]; // "localhost:3306"
+            String[] parts = hostPort.split(":");
+            hostField.setText(parts[0]);
+            portField.setText(parts.length > 1 ? parts[1] : "3306");
+        } catch (Exception ex) {
+            hostField.clear();
+            portField.clear();
+        }
+    }
+
     private void populateProfiles() {
         String[] profiles = creds.getAllProfileNames();
         profileComboBox.getItems().setAll(profiles);
@@ -267,7 +299,7 @@ public class Login extends HBox {
             profileComboBox.setValue(lastUsed);
 
             String[] details = creds.loadProfile(lastUsed);
-            urlField.setText(details[0]);
+            parseUrlIntoFields(details[0]);
             nameField.setText(details[1]);
             initialsField.setText(details[2]);
 
@@ -277,7 +309,7 @@ public class Login extends HBox {
         }
     }
 
-    private void enterCreds(String url, String user, String password, String initials){
+    private void enterCreds(String url, String user, String password, String initials) {
         creds.user = user;
         creds.pass = password;
         creds.url = url;
@@ -285,13 +317,13 @@ public class Login extends HBox {
         creds.Display();
     }
 
-    private VBox createFieldGroup(String labelText) {
+    private VBox createFieldGroup(String labelText, String placeholder) {
         Text label = new Text(labelText);
         label.setFont(Font.font("System", 13));
         label.setFill(Color.web("#1a1a1a"));
 
         TextField field = new TextField();
-        field.setPromptText("Value");
+        field.setPromptText(placeholder);
         field.setMaxWidth(300);
         field.setPrefHeight(40);
         field.setStyle("-fx-background-color: white; " +
