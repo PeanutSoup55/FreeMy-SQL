@@ -339,7 +339,7 @@ public class SchemasRoot extends BorderPane {
                     tableRow.setPrefHeight(26);
                     tableRow.setMinHeight(26);
                     tableRow.setAlignment(Pos.CENTER_LEFT);
-                    tableRow.setStyle("-fx-background-color: #FAFAFA;");
+                    tableRow.setStyle("-fx-background-color: #FAFAFA; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
                     tableRow.setCursor(Cursor.HAND);
 
                     tableRow.setOnMouseEntered(ev -> tableRow.setStyle("-fx-background-color: #EEF3FF;"));
@@ -350,31 +350,26 @@ public class SchemasRoot extends BorderPane {
                     tableMenu.setStyle(
                             "-fx-background-color: white; -fx-background-radius: 8;" +
                                     "-fx-border-radius: 8; -fx-border-color: #E0E0E0; -fx-padding: 4;" +
-                                    "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);"
+                                    "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);" +
+                                    "-fx-selection-bar: #F5F5F5;" +
+                                    "-fx-selection-bar-non-focused: #F5F5F5;"
                     );
 
                     MenuItem showDataMI  = makeMenuItem("Show Data");
                     String schemaName = schema.getName();
                     if (!remote) {
                         MenuItem crudMI = makeMenuItem("CRUD Operations");
-                        MenuItem codeMI = makeMenuItem("Generate Login Code");
                         MenuItem editMI = makeMenuItem("Edit Table");
                         MenuItem deleteMI = makeMenuItem("Delete Table");
                         deleteMI.setStyle(deleteMI.getStyle() + "-fx-text-fill: #c0392b;");
 
-                        tableMenu.getItems().addAll(showDataMI, crudMI, codeMI, new SeparatorMenuItem(), editMI, deleteMI);
+                        tableMenu.getItems().addAll(showDataMI, crudMI, new SeparatorMenuItem(), editMI, deleteMI);
 
 
                         crudMI.setOnAction(ev -> {
                             selectedTab = schemaRow;
                             isRemoteSelected = remote;
                             setCenter(new TableCRUD(this, schemaName, table));
-                        });
-
-                        codeMI.setOnAction(ev -> {
-                            selectedTab = schemaRow;
-                            isRemoteSelected = remote;
-                            setCenter(new LoginGen(this, schemaName, table));
                         });
 
                         editMI.setOnAction(ev -> {
@@ -532,7 +527,9 @@ public class SchemasRoot extends BorderPane {
                 contextMenu.setStyle(
                         "-fx-background-color: white; -fx-background-radius: 8;" +
                                 "-fx-border-radius: 8; -fx-border-color: #E0E0E0; -fx-padding: 4;" +
-                                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);"
+                                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 2);" +
+                                "-fx-selection-bar: #F5F5F5;" +
+                                "-fx-selection-bar-non-focused: #F5F5F5;"
                 );
 
                 if (remote) {
@@ -571,6 +568,26 @@ public class SchemasRoot extends BorderPane {
                         });
                         contextMenu.getItems().add(pushItem);
                     }
+
+                    Menu generateLoginMenu = new Menu("Generate Login Code");
+                    generateLoginMenu.setStyle("-fx-font-size: 12px; -fx-padding: 6 12 6 12;");
+                    Schema full = db.GetTablesInSchema(schema.getName());
+                    for (Table t : full.getTables()) {
+                        MenuItem tableOption = makeMenuItem(t.getName());
+                        tableOption.setOnAction(event -> {
+                            if (selectedTab != null && selectedTab != schemaRow) {
+                                Label prevName = (Label) selectedTab.getChildren().get(1);
+                                applyDefaultStyle(selectedTab, prevName);
+                            }
+                            applySelectedStyle(schemaRow, nameLabel);
+                            selectedTab = schemaRow;
+                            isRemoteSelected = false;
+                            setCenter(new LoginGen(this, schema.getName(), t));
+                        });
+                        generateLoginMenu.getItems().add(tableOption);
+                    }
+                    contextMenu.getItems().add(generateLoginMenu);
+
 
                     MenuItem deleteItem = new MenuItem("Delete " + schema.getName());
                     deleteItem.setOnAction(event -> {
@@ -750,12 +767,11 @@ public class SchemasRoot extends BorderPane {
 
         MenuItem showDataItem  = makeMenuItem("Show Data");
         MenuItem crudItem = makeMenuItem("CRUD Operations");
-        MenuItem codeItem = makeMenuItem("Generate Login Code");
         MenuItem editItem = makeMenuItem("Edit Table");
         MenuItem deleteItem = makeMenuItem("Delete Table");
         deleteItem.setStyle(deleteItem.getStyle() + "-fx-text-fill: #c0392b;");
 
-        menu.getItems().addAll(showDataItem, crudItem, codeItem, new SeparatorMenuItem(), editItem, deleteItem);
+        menu.getItems().addAll(showDataItem, crudItem, new SeparatorMenuItem(), editItem, deleteItem);
 
         hamburger.setOnMouseClicked(e -> {
             menu.show(hamburger, javafx.geometry.Side.BOTTOM, 0, 4);
@@ -765,8 +781,6 @@ public class SchemasRoot extends BorderPane {
         showDataItem.setOnAction(e -> showTableData(selectedSchemaName, table));
 
         crudItem.setOnAction(e -> setCenter(new TableCRUD(this, selectedSchemaName, table)));
-
-        codeItem.setOnAction(e -> setCenter(new LoginGen(this, selectedSchemaName, table)));
 
         editItem.setOnAction(e -> {
             Schema fullSchema = db.GetTablesInSchema(selectedSchemaName);
