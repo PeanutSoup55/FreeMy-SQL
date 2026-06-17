@@ -48,12 +48,10 @@ public class SchemasRoot extends BorderPane {
         shell.setPrefWidth(220);
         shell.setMaxWidth(220);
         shell.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                        "-fx-background-radius: 10;" +
-                        "-fx-border-color: #DEDEDE;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-border-radius: 10;" +
-                        "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 1, 2);"
+                "-fx-background-color: #1C2333;" +
+                        "-fx-background-radius: 0;" +
+                        "-fx-border-color: transparent;" +
+                        "-fx-effect: none;"
         );
 
         // ── TOOLBAR ───────────────────────────────────────────────────
@@ -61,10 +59,8 @@ public class SchemasRoot extends BorderPane {
         toolbar.setPadding(new Insets(5, 6, 5, 6));
         toolbar.setAlignment(Pos.CENTER_LEFT);
         toolbar.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                        "-fx-background-radius: 10 10 0 0;" +
-                        "-fx-border-color: transparent transparent #EBEBEB transparent;" +
-                        "-fx-border-width: 1;"
+                "-fx-background-color: #1C2333;" +
+                        "-fx-border-color: transparent;"
         );
 
         Button refreshBtn  = makeToolBtn("/assets/refresh.png",  "Refresh");
@@ -110,10 +106,11 @@ public class SchemasRoot extends BorderPane {
         searchRow.setPadding(new Insets(5, 8, 5, 8));
         searchRow.setAlignment(Pos.CENTER_LEFT);
         searchRow.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                        "-fx-border-color: transparent transparent #EBEBEB transparent;" +
-                        "-fx-border-width: 1;"
+                "-fx-background-color: #252D3D;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-border-color: transparent;"
         );
+
 
         ImageView searchIcon = new ImageView(
                 new Image(getClass().getResourceAsStream("/assets/search.png"))
@@ -127,6 +124,8 @@ public class SchemasRoot extends BorderPane {
         searchField.setStyle(
                 "-fx-background-color: transparent;" +
                         "-fx-border-color: transparent;" +
+                        "-fx-text-fill: #FFFFFF;" +
+                        "-fx-prompt-text-fill: #6B7A8D;" +
                         "-fx-padding: 0;"
         );
         HBox.setHgrow(searchField, Priority.ALWAYS);
@@ -175,14 +174,13 @@ public class SchemasRoot extends BorderPane {
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.setStyle(
-                "-fx-background: transparent;" +
-                        "-fx-background-color: transparent;" +
+                "-fx-background: #1C2333;" +
+                        "-fx-background-color: #1C2333;" +
                         "-fx-border-color: transparent;"
         );
         scrollPane.skinProperty().addListener((obs, o, n) -> {
             if (n != null)
-                scrollPane.lookup(".viewport")
-                        .setStyle("-fx-background-color: transparent;");
+                scrollPane.lookup(".viewport").setStyle("-fx-background-color: #1C2333;");
         });
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
@@ -192,9 +190,8 @@ public class SchemasRoot extends BorderPane {
         footer.setAlignment(Pos.CENTER_LEFT);
         footer.setCursor(Cursor.HAND);
         footer.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                        "-fx-background-radius: 0 0 10 10;" +
-                        "-fx-border-color: #EBEBEB transparent transparent transparent;" +
+                "-fx-background-color: #1C2333;" +
+                        "-fx-border-color: #2A3244 transparent transparent transparent;" +
                         "-fx-border-width: 1;"
         );
         footer.setOnMouseEntered(e -> footer.setStyle(
@@ -219,6 +216,8 @@ public class SchemasRoot extends BorderPane {
         footerIcon.setPreserveRatio(true);
 
         Label footerLabel = new Label("New schema");
+        footerLabel.setStyle("-fx-text-fill: #A0ADB8;");
+
         footer.getChildren().addAll(footerIcon, footerLabel);
 
         shell.getChildren().addAll(toolbar, searchRow, scrollPane, footer);
@@ -230,7 +229,7 @@ public class SchemasRoot extends BorderPane {
     // ── Section header ─────────────────────────────────────────────────
     private HBox buildSectionHeader(String title) {
         Label label = new Label(title);
-        label.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 10; -fx-font-weight: bold;");
+        label.setStyle("-fx-text-fill: #4A5568; -fx-font-size: 10; -fx-font-weight: bold;");
         HBox hdr = new HBox(label);
         hdr.setPadding(new Insets(8, 8, 2, 10));
         hdr.setAlignment(Pos.CENTER_LEFT);
@@ -332,19 +331,18 @@ public class SchemasRoot extends BorderPane {
                 badge.setText(String.valueOf(full.getTables().size()));
                 for (Table table : full.getTables()) {
                     Label tableLabel = new Label(table.getName());
-                    tableLabel.setStyle("-fx-text-fill: #555555;");
+                    tableLabel.setStyle("-fx-text-fill: #8FA0B4;");
 
                     HBox tableRow = new HBox(tableLabel);
                     tableRow.setPadding(new Insets(0, 8, 0, 38));
                     tableRow.setPrefHeight(26);
                     tableRow.setMinHeight(26);
                     tableRow.setAlignment(Pos.CENTER_LEFT);
-                    tableRow.setStyle("-fx-background-color: #FAFAFA; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
+                    tableRow.setStyle("-fx-background-color: transparent;");
                     tableRow.setCursor(Cursor.HAND);
 
-                    tableRow.setOnMouseEntered(ev -> tableRow.setStyle("-fx-background-color: #EEF3FF;"));
-                    tableRow.setOnMouseExited(ev -> tableRow.setStyle("-fx-background-color: #FAFAFA;"));
-
+                    tableRow.setOnMouseEntered(ev -> tableRow.setStyle("-fx-background-color: #252D3D;"));
+                    tableRow.setOnMouseExited(ev -> tableRow.setStyle("-fx-background-color: transparent;"));
                     // ── Right-click context menu ───────────────────────────
                     ContextMenu tableMenu = new ContextMenu();
                     tableMenu.setStyle(
@@ -668,13 +666,13 @@ public class SchemasRoot extends BorderPane {
 
     // ── Style helpers ──────────────────────────────────────────────────
     private void applySelectedStyle(HBox row, Label label) {
-        row.setStyle("-fx-background-color: #E3EDFF;");
-        label.setStyle("-fx-text-fill: #1755B0; -fx-font-weight: bold;");
+        row.setStyle("-fx-background-color: #2E7D5E;");
+        label.setStyle("-fx-text-fill: #FFFFFF; -fx-font-weight: bold;");
     }
 
     private void applyDefaultStyle(HBox row, Label label) {
         row.setStyle("-fx-background-color: transparent;");
-        label.setStyle("-fx-text-fill: #222222; -fx-font-weight: normal;");
+        label.setStyle("-fx-text-fill: #C8D0D8; -fx-font-weight: normal;");
     }
 
     private void resortSection(VBox section, boolean ascending) {

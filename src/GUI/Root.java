@@ -7,6 +7,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Separator;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -40,81 +41,92 @@ public class Root extends BorderPane {
     }
 
     public void createSide() {
-        VBox expanded  = buildExpanded();
-        VBox collapsed = buildCollapsed();
+        // LEFT RAIL - icons only
+        VBox rail = new VBox();
+        rail.setPrefWidth(52);
+        rail.setMinWidth(52);
+        rail.setMaxWidth(52);
+        rail.setStyle("-fx-background-color: #2E5A47;");
 
-        collapsed.setVisible(isCollapsed);
-        collapsed.setManaged(isCollapsed);
-        expanded.setVisible(!isCollapsed);
-        expanded.setManaged(!isCollapsed);
-
-        StackPane wrapper = new StackPane(expanded, collapsed);
-        wrapper.setAlignment(Pos.TOP_LEFT);
-        BorderPane.setMargin(wrapper, new Insets(10));
-        setLeft(wrapper);
-    }
-    private VBox buildExpanded() {
-        VBox vBox = new VBox();
-        vBox.setStyle("-fx-background-radius: 15;" +
-                "-fx-background-color: #FFFFFF;" +
-                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
-        vBox.setPrefWidth(260);
-
-        HBox top = createTopHBox(creds.getInitials(), creds.getUser(), creds.getUrl(), true);
-        vBox.getChildren().add(top);
+        // Avatar at top
+        Text initialLabel = new Text(creds.getInitials());
+        initialLabel.setStyle("-fx-font-weight: bold; -fx-fill: white; -fx-font-size: 14;");
+        Rectangle rec = new Rectangle(36, 36);
+        rec.setArcWidth(8); rec.setArcHeight(8);
+        rec.setFill(Color.web("#1d3d30"));
+        StackPane avatar = new StackPane(rec, initialLabel);
+        avatar.setPadding(new Insets(10, 0, 10, 0));
+        HBox avatarRow = new HBox(avatar);
+        avatarRow.setAlignment(Pos.CENTER);
+        avatarRow.setPadding(new Insets(10, 0, 10, 0));
+        rail.getChildren().add(avatarRow);
 
         for (int i = 0; i < LABELS.length; i++) {
-            HBox item = createMenuItem(ICONS[i], LABELS[i], LABELS[i].equals(activeMenu), true);
-            vBox.getChildren().add(item);
+            rail.getChildren().add(createRailIcon(ICONS[i], LABELS[i]));
+        }
 
-            if ("Schemas".equals(LABELS[i]) && "Schemas".equals(activeMenu)) {
-                if (schemasRoot == null) schemasRoot = new SchemasRoot();
-                Separator sep = new Separator();
-                sep.setPadding(new Insets(4, 10, 4, 10));
-                vBox.getChildren().add(sep);
+        // SCHEMA TREE PANEL - only shown when Schemas is active
+        VBox schemaPanel = new VBox();
+        schemaPanel.setPrefWidth(220);
+        schemaPanel.setMinWidth(220);
+        schemaPanel.setStyle("-fx-background-color: #FFFFFF; " +
+                "-fx-border-color: #DEDEDE; -fx-border-width: 0 1 0 0;");
 
-                Node schemaPanel = schemasRoot.buildSidebarContent();
-                if (schemaPanel instanceof Region r) {
-                    r.setPrefWidth(Double.MAX_VALUE);
-                    r.setMaxWidth(Double.MAX_VALUE);
-                    r.setStyle(r.getStyle()
-                            .replace("-fx-border-color: #DEDEDE;", "-fx-border-color: transparent;")
-                            .replace("-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 1, 2);", "")
-                    );
-                }
-                VBox.setVgrow(schemaPanel, Priority.ALWAYS);
-                vBox.getChildren().add(schemaPanel);
+        if ("Schemas".equals(activeMenu)) {
+            if (schemasRoot == null) schemasRoot = new SchemasRoot();
+            Node sidebar = schemasRoot.buildSidebarContent();
+            if (sidebar instanceof Region r) {
+                r.setPrefWidth(Double.MAX_VALUE);
+                r.setMaxWidth(Double.MAX_VALUE);
+                r.setStyle(r.getStyle()
+                        .replace("-fx-border-color: #DEDEDE;", "-fx-border-color: transparent;")
+                        .replace("-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 1, 2);", ""));
             }
+            VBox.setVgrow(sidebar, Priority.ALWAYS);
+            schemaPanel.getChildren().add(sidebar);
+            VBox.setVgrow((Node) sidebar, Priority.ALWAYS);
         }
 
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-        vBox.getChildren().add(spacer);
-
-        return vBox;
+        HBox sidebarWrapper = new HBox(rail, schemaPanel);
+        BorderPane.setMargin(sidebarWrapper, Insets.EMPTY);
+        setLeft(sidebarWrapper);
     }
 
-    private VBox buildCollapsed() {
-        VBox vBox = new VBox();
-        vBox.setStyle("-fx-background-radius: 15;" +
-                        "-fx-background-color: #FFFFFF;" +
-                        "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 12, 0, 0, 0);");
-        vBox.setPrefWidth(68);
-        vBox.setAlignment(Pos.TOP_CENTER);
+    private HBox createRailIcon(String iconPath, String label) {
+        ImageView iv = new ImageView(new Image(
+                Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(iconPath))));
+        iv.setFitWidth(20);
+        iv.setFitHeight(20);
 
-        HBox top = createTopHBox(creds.getInitials(), null, null, false);
-        vBox.getChildren().add(top);
+        StackPane iconWrap = new StackPane(iv);
+        iconWrap.setPrefSize(36, 36);
+        boolean isActive = label.equals(activeMenu);
+        iconWrap.setStyle(isActive
+                ? "-fx-background-color: rgba(255,255,255,0.2); -fx-background-radius: 8;"
+                : "-fx-background-color: transparent; -fx-background-radius: 8;");
+        iconWrap.setCursor(javafx.scene.Cursor.HAND);
 
-        for (int i = 0; i < LABELS.length; i++) {
-            HBox item = createMenuItem(ICONS[i], LABELS[i], LABELS[i].equals(activeMenu), false);
-            vBox.getChildren().add(item);
-        }
+        HBox row = new HBox(iconWrap);
+        row.setAlignment(Pos.CENTER);
+        row.setPrefHeight(40);
+        row.setOnMouseEntered(e -> {
+            if (!label.equals(activeMenu))
+                iconWrap.setStyle("-fx-background-color: rgba(255,255,255,0.1); -fx-background-radius: 8;");
+        });
+        row.setOnMouseExited(e -> {
+            if (!label.equals(activeMenu))
+                iconWrap.setStyle("-fx-background-color: transparent; -fx-background-radius: 8;");
+        });
+        row.setOnMouseClicked(e -> {
+            activeMenu = label;
+            switchCenterContent(label);
+            createSide();
+        });
 
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-
-        return vBox;
+        Tooltip.install(row, new Tooltip(label));
+        return row;
     }
+
 
     private void toggleCollapse() {
         isCollapsed = !isCollapsed;
@@ -126,7 +138,7 @@ public class Root extends BorderPane {
 
         Rectangle rec = new Rectangle(42, 42);
         rec.setArcWidth(10); rec.setArcHeight(10);
-        rec.setFill(Color.web("#285A48"));
+        rec.setFill(Color.web("#2E7D5E"));
 
         StackPane avatar = new StackPane(rec, initialLabel);
 
@@ -136,7 +148,7 @@ public class Root extends BorderPane {
         if (expanded) arrowIcon.setRotate(180);
 
         StackPane arrowBtn = new StackPane(arrowIcon);
-        arrowBtn.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 50;");
+        arrowBtn.setStyle("-fx-background-color: #2A3244; -fx-background-radius: 50;");
         arrowBtn.setPrefSize(26, 26);
         arrowBtn.setMinSize(26, 26);
         arrowBtn.setMaxSize(26, 26);
@@ -155,11 +167,11 @@ public class Root extends BorderPane {
 
         VBox info = new VBox(3);
         Text name = new Text(user != null ? user : "");
-        name.setStyle("-fx-font-weight: bold; -fx-fill: #333;");
+        name.setStyle("-fx-font-weight: bold; -fx-fill: #FFFFFF;");
         String rawUrl = (url != null) ? url : "";
         String limitedUrl = (rawUrl.length() > 20) ? rawUrl.substring(0, 20) + "..." : rawUrl;
         Text urlText = new Text(limitedUrl);
-        urlText.setStyle("-fx-fill: gray; -fx-font-size: 10px;");
+        urlText.setStyle("-fx-fill: #6B7A8D; -fx-font-size: 10px;");
         info.getChildren().addAll(name, urlText);
         info.setAlignment(Pos.CENTER_LEFT);
 
@@ -171,59 +183,56 @@ public class Root extends BorderPane {
         hbox.setPadding(new Insets(12, 12, 8, 12));
         return hbox;
     }
+//
+//    private HBox createMenuItem(String icon, String labelText, boolean isSelected, boolean showLabel) {
+//        ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(icon))));
+//        imageView.setFitHeight(22);
+//        imageView.setFitWidth(22);
+//
+//        HBox hbox;
+//        Text label = null;
+//
+//        if (showLabel) {
+//            label = new Text(labelText);
+//            label.setFont(Font.font("System", 13));
+//            label.setStyle("-fx-font-weight: bold;");
+//            hbox = new HBox(20, imageView, label);
+//            hbox.setPadding(new Insets(9, 12, 9, 12));
+//            hbox.setMinWidth(200);
+//            hbox.setAlignment(Pos.CENTER_LEFT);
+//        } else {
+//            hbox = new HBox(imageView);
+//            hbox.setAlignment(Pos.CENTER);
+//            hbox.setPrefWidth(68);
+//            hbox.setPadding(new Insets(9, 0, 9, 0));
+//        }
+//
+//        hbox.setPrefHeight(30);
+//        VBox.setMargin(hbox, new Insets(1, 6, 1, 6));
+//
+//        final Text finalLabel = label;
+//        if (isSelected) applySelectedStyle(hbox, finalLabel);
+//        else            applyDefaultStyle(hbox, finalLabel);
+//
+//        hbox.setOnMouseEntered(e -> {
+//            if (!labelText.equals(activeMenu))
+//                hbox.setBackground(new Background(new BackgroundFill(
+//                        Color.web("#252D3D"), new CornerRadii(6), Insets.EMPTY)));
+//        });
+//        hbox.setOnMouseExited(e -> {
+//            if (!labelText.equals(activeMenu))
+//                applyDefaultStyle(hbox, finalLabel);
+//        });
+//        hbox.setOnMouseClicked(e -> {
+//            activeMenu = labelText;
+//            switchCenterContent(labelText);
+//            createSide();
+//        });
+//
+//        return hbox;
+//    }
 
-    private HBox createMenuItem(String icon, String labelText, boolean isSelected, boolean showLabel) {
-        ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(icon))));
-        imageView.setFitHeight(22);
-        imageView.setFitWidth(22);
 
-        HBox hbox;
-        Text label = null;
-
-        if (showLabel) {
-            label = new Text(labelText);
-            label.setFont(Font.font("System", 13));
-            label.setStyle("-fx-font-weight: bold;");
-            hbox = new HBox(20, imageView, label);
-            hbox.setPadding(new Insets(9, 12, 9, 12));
-            hbox.setMinWidth(200);
-            hbox.setAlignment(Pos.CENTER_LEFT);
-        } else {
-            hbox = new HBox(imageView);
-            hbox.setAlignment(Pos.CENTER);
-            hbox.setPrefWidth(68);
-            hbox.setPadding(new Insets(9, 0, 9, 0));
-        }
-
-        hbox.setPrefHeight(30);
-        VBox.setMargin(hbox, new Insets(1, 6, 1, 6));
-
-        final Text finalLabel = label;
-        if (isSelected) applySelectedStyle(hbox, finalLabel);
-        else            applyDefaultStyle(hbox, finalLabel);
-
-        hbox.setOnMouseClicked(e -> {
-            activeMenu = labelText;
-            switchCenterContent(labelText);
-            createSide();
-        });
-
-        return hbox;
-    }
-
-    private void applySelectedStyle(HBox hbox, Text label) {
-        hbox.setBackground(new Background(new BackgroundFill(
-                Color.web("#2E5A47"), new CornerRadii(8), Insets.EMPTY)));
-        if (label != null) label.setFill(Color.WHITE);
-
-        if (!hbox.getChildren().isEmpty() && hbox.getChildren().getFirst() instanceof ImageView iv)
-            iv.setStyle("-fx-effect: null;");
-    }
-
-    private void applyDefaultStyle(HBox hbox, Text label) {
-        hbox.setBackground(null);
-        if (label != null) label.setFill(Color.web("#4A4A4A"));
-    }
 
     private void switchCenterContent(String menuTitle) {
         switch (menuTitle) {
