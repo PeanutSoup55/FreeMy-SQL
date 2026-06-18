@@ -72,20 +72,18 @@ public class Root extends BorderPane {
         schemaPanel.setStyle("-fx-background-color: #FFFFFF; " +
                 "-fx-border-color: #DEDEDE; -fx-border-width: 0 1 0 0;");
 
-        if ("Schemas".equals(activeMenu)) {
-            if (schemasRoot == null) schemasRoot = new SchemasRoot();
-            Node sidebar = schemasRoot.buildSidebarContent();
-            if (sidebar instanceof Region r) {
-                r.setPrefWidth(Double.MAX_VALUE);
-                r.setMaxWidth(Double.MAX_VALUE);
-                r.setStyle(r.getStyle()
-                        .replace("-fx-border-color: #DEDEDE;", "-fx-border-color: transparent;")
-                        .replace("-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 1, 2);", ""));
-            }
-            VBox.setVgrow(sidebar, Priority.ALWAYS);
-            schemaPanel.getChildren().add(sidebar);
-            VBox.setVgrow((Node) sidebar, Priority.ALWAYS);
+        if (schemasRoot == null) schemasRoot = new SchemasRoot();
+        Node sidebar = schemasRoot.buildSidebarContent();
+        if (sidebar instanceof Region r) {
+            r.setPrefWidth(Double.MAX_VALUE);
+            r.setMaxWidth(Double.MAX_VALUE);
+            r.setStyle(r.getStyle()
+                    .replace("-fx-border-color: #DEDEDE;", "-fx-border-color: transparent;")
+                    .replace("-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 1, 2);", ""));
         }
+        VBox.setVgrow(sidebar, Priority.ALWAYS);
+        schemaPanel.getChildren().add(sidebar);
+        VBox.setVgrow((Node) sidebar, Priority.ALWAYS);
 
         HBox sidebarWrapper = new HBox(rail, schemaPanel);
         BorderPane.setMargin(sidebarWrapper, Insets.EMPTY);
@@ -126,113 +124,6 @@ public class Root extends BorderPane {
         Tooltip.install(row, new Tooltip(label));
         return row;
     }
-
-
-    private void toggleCollapse() {
-        isCollapsed = !isCollapsed;
-        createSide();
-    }
-    private HBox createTopHBox(String initials, String user, String url, boolean expanded) {
-        Text initialLabel = new Text(initials);
-        initialLabel.setStyle("-fx-font-weight: bold; -fx-fill: white; -fx-font-size: 18;");
-
-        Rectangle rec = new Rectangle(42, 42);
-        rec.setArcWidth(10); rec.setArcHeight(10);
-        rec.setFill(Color.web("#2E7D5E"));
-
-        StackPane avatar = new StackPane(rec, initialLabel);
-
-        ImageView arrowIcon = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/arrow.png"))));
-        arrowIcon.setFitWidth(16);
-        arrowIcon.setFitHeight(16);
-        if (expanded) arrowIcon.setRotate(180);
-
-        StackPane arrowBtn = new StackPane(arrowIcon);
-        arrowBtn.setStyle("-fx-background-color: #2A3244; -fx-background-radius: 50;");
-        arrowBtn.setPrefSize(26, 26);
-        arrowBtn.setMinSize(26, 26);
-        arrowBtn.setMaxSize(26, 26);
-        arrowBtn.setCursor(javafx.scene.Cursor.HAND);
-        arrowBtn.setOnMouseClicked(e -> toggleCollapse());
-
-        if (!expanded) {
-            VBox col = new VBox(8, avatar, arrowBtn);
-            col.setAlignment(Pos.CENTER);
-            col.setPadding(new Insets(12, 0, 8, 0));
-            HBox hbox = new HBox(col);
-            hbox.setAlignment(Pos.CENTER);
-            hbox.setPrefWidth(68);
-            return hbox;
-        }
-
-        VBox info = new VBox(3);
-        Text name = new Text(user != null ? user : "");
-        name.setStyle("-fx-font-weight: bold; -fx-fill: #FFFFFF;");
-        String rawUrl = (url != null) ? url : "";
-        String limitedUrl = (rawUrl.length() > 20) ? rawUrl.substring(0, 20) + "..." : rawUrl;
-        Text urlText = new Text(limitedUrl);
-        urlText.setStyle("-fx-fill: #6B7A8D; -fx-font-size: 10px;");
-        info.getChildren().addAll(name, urlText);
-        info.setAlignment(Pos.CENTER_LEFT);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        HBox hbox = new HBox(12, avatar, info, spacer, arrowBtn);
-        hbox.setAlignment(Pos.CENTER_LEFT);
-        hbox.setPadding(new Insets(12, 12, 8, 12));
-        return hbox;
-    }
-//
-//    private HBox createMenuItem(String icon, String labelText, boolean isSelected, boolean showLabel) {
-//        ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(icon))));
-//        imageView.setFitHeight(22);
-//        imageView.setFitWidth(22);
-//
-//        HBox hbox;
-//        Text label = null;
-//
-//        if (showLabel) {
-//            label = new Text(labelText);
-//            label.setFont(Font.font("System", 13));
-//            label.setStyle("-fx-font-weight: bold;");
-//            hbox = new HBox(20, imageView, label);
-//            hbox.setPadding(new Insets(9, 12, 9, 12));
-//            hbox.setMinWidth(200);
-//            hbox.setAlignment(Pos.CENTER_LEFT);
-//        } else {
-//            hbox = new HBox(imageView);
-//            hbox.setAlignment(Pos.CENTER);
-//            hbox.setPrefWidth(68);
-//            hbox.setPadding(new Insets(9, 0, 9, 0));
-//        }
-//
-//        hbox.setPrefHeight(30);
-//        VBox.setMargin(hbox, new Insets(1, 6, 1, 6));
-//
-//        final Text finalLabel = label;
-//        if (isSelected) applySelectedStyle(hbox, finalLabel);
-//        else            applyDefaultStyle(hbox, finalLabel);
-//
-//        hbox.setOnMouseEntered(e -> {
-//            if (!labelText.equals(activeMenu))
-//                hbox.setBackground(new Background(new BackgroundFill(
-//                        Color.web("#252D3D"), new CornerRadii(6), Insets.EMPTY)));
-//        });
-//        hbox.setOnMouseExited(e -> {
-//            if (!labelText.equals(activeMenu))
-//                applyDefaultStyle(hbox, finalLabel);
-//        });
-//        hbox.setOnMouseClicked(e -> {
-//            activeMenu = labelText;
-//            switchCenterContent(labelText);
-//            createSide();
-//        });
-//
-//        return hbox;
-//    }
-
-
 
     private void switchCenterContent(String menuTitle) {
         switch (menuTitle) {
