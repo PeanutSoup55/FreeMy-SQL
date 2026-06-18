@@ -36,6 +36,10 @@ public class SchemasRoot extends BorderPane {
     private final List<VBox> schemaWrappers = new ArrayList<>();
     private VBox localSection;
     private VBox remoteSection;
+    private double scale = 1.0;
+    private static final double SCALE_MIN = 0.3;
+    private static final double SCALE_MAX = 3.0;
+
     public SchemasRoot() {
         createTables();
     }
@@ -696,22 +700,69 @@ public class SchemasRoot extends BorderPane {
                 ? (String) selectedTab.getUserData()
                 : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
 
-        Schema schema       = isRemoteSelected
+        Schema schema = isRemoteSelected
                 ? db.GetTablesInSchemaRemote(selectedSchema)
                 : db.GetTablesInSchema(selectedSchema);
         List<String[]> foreignKeys = isRemoteSelected
                 ? db.GetForeignKeysRemote(selectedSchema)
                 : db.GetForeignKeys(selectedSchema);
 
-        Pane canvas = new Pane();
-        canvas.setMinSize(1000, 800);
+        final double CANVAS_W = 3000;
+        final double CANVAS_H = 3000;
+        // Tables will be laid out around this center point
+        final double CENTER_X = CANVAS_W / 2.0;
+        final double CENTER_Y = CANVAS_H / 2.0;
+
+        javafx.scene.canvas.Canvas gridCanvas =
+                new javafx.scene.canvas.Canvas(CANVAS_W, CANVAS_H);
+        drawGrid(gridCanvas, CANVAS_W, CANVAS_H);
+
+        Pane cardPane = new Pane();
+        cardPane.setMinSize(CANVAS_W, CANVAS_H);
+        cardPane.setPrefSize(CANVAS_W, CANVAS_H);
+
         Pane overlay = new Pane();
         overlay.setMouseTransparent(true);
-        overlay.prefWidthProperty().bind(canvas.widthProperty());
-        overlay.prefHeightProperty().bind(canvas.heightProperty());
-        StackPane stackPane = new StackPane(canvas, overlay);
+        overlay.setMinSize(CANVAS_W, CANVAS_H);
+        overlay.setPrefSize(CANVAS_W, CANVAS_H);
+
+        StackPane world = new StackPane(gridCanvas, cardPane, overlay);
+        world.setAlignment(javafx.geometry.Pos.TOP_LEFT);
+        world.setMinSize(CANVAS_W, CANVAS_H);
+        world.setPrefSize(CANVAS_W, CANVAS_H);
+
+        Pane viewport = new Pane(world);
+        viewport.setStyle("-fx-background-color: #F5F6F5;");
+        viewport.layoutBoundsProperty().addListener((obs, o, n) ->
+                viewport.setClip(new javafx.scene.shape.Rectangle(n.getWidth(), n.getHeight())));
+
+        final double[] tx = {0};
+        final double[] ty = {0};
+
+        Runnable applyTransform = () -> {
+            world.setTranslateX(tx[0] - (1 - scale) * CANVAS_W / 2.0);
+            world.setTranslateY(ty[0] - (1 - scale) * CANVAS_H / 2.0);
+            world.setScaleX(scale);
+            world.setScaleY(scale);
+        };
+
         Map<String, double[]> layout = computeForceLayout(schema.getTables(), foreignKeys);
         separateCards(layout, schema.getTables());
+
+        // Compute bounding box of the layout so we can center it
+        double minLx = Double.MAX_VALUE, minLy = Double.MAX_VALUE;
+        double maxLx = Double.MIN_VALUE, maxLy = Double.MIN_VALUE;
+        for (double[] pos : layout.values()) {
+            minLx = Math.min(minLx, pos[0]);
+            minLy = Math.min(minLy, pos[1]);
+            maxLx = Math.max(maxLx, pos[0]);
+            maxLy = Math.max(maxLy, pos[1]);
+        }
+        // Offset to apply to each card so the group is centered on CENTER_X/Y
+        final double offsetX = CENTER_X - (minLx + maxLx) / 2.0;
+        final double offsetY = CENTER_Y - (minLy + maxLy) / 2.0;
+
+        // keep your original card loop exactly as it was
         int i = 0;
         for (Table table : schema.getTables()) {
             VBox card = buildCard(table);
@@ -722,22 +773,97 @@ public class SchemasRoot extends BorderPane {
             } else {
                 double[] computed = layout.getOrDefault(table.getName(),
                         new double[]{20 + (i % 4) * 260.0, 20 + (i / 4) * 280.0});
-                card.setLayoutX(computed[0]);
-                card.setLayoutY(computed[1]);
+                card.setLayoutX(computed[0] + offsetX);
+                card.setLayoutY(computed[1] + offsetY);
             }
-            makeDraggable(card, overlay, foreignKeys, stackPane, selectedSchema, table.getName());
-            canvas.getChildren().add(card);
+            makeDraggable(card, overlay, foreignKeys, world, selectedSchema, table.getName());
+            cardPane.getChildren().add(card);
             i++;
         }
-        ScrollPane scroll = new ScrollPane(stackPane);
-        scroll.setFitToWidth(false);
-        scroll.setFitToHeight(false);
-        scroll.setStyle("-fx-background-color: transparent;");
-        setCenter(scroll);
-        Platform.runLater(() -> Platform.runLater(() ->
-                drawConnectors(overlay, foreignKeys, stackPane)));
+
+// compute center from actual placed positions
+        double sumX = 0, sumY = 0;
+        for (javafx.scene.Node n : cardPane.getChildren()) {
+            sumX += ((VBox) n).getLayoutX();
+            sumY += ((VBox) n).getLayoutY();
+        }
+        final double centerX = cardPane.getChildren().isEmpty() ? CANVAS_W / 2.0 : sumX / cardPane.getChildren().size();
+        final double centerY = cardPane.getChildren().isEmpty() ? CANVAS_H / 2.0 : sumY / cardPane.getChildren().size();
+
+        viewport.layoutBoundsProperty().addListener(new javafx.beans.value.ChangeListener<>() {
+            public void changed(javafx.beans.value.ObservableValue<? extends javafx.geometry.Bounds> o,
+                                javafx.geometry.Bounds a, javafx.geometry.Bounds b) {
+                if (b.getWidth() > 0) {
+                    tx[0] = b.getWidth()  / 2.0 - centerX * scale;
+                    ty[0] = b.getHeight() / 2.0 - centerY * scale;
+                    applyTransform.run();
+                    viewport.layoutBoundsProperty().removeListener(this);
+                }
+            }
+        });
+
+        // Middle-mouse pan
+        final double[] panStart = {0, 0, 0, 0};
+        viewport.setOnMousePressed(e -> {
+            if (e.isMiddleButtonDown()) {
+                panStart[0] = e.getX(); panStart[1] = e.getY();
+                panStart[2] = tx[0];   panStart[3] = ty[0];
+                viewport.setCursor(Cursor.MOVE);
+            }
+        });
+        viewport.setOnMouseDragged(e -> {
+            if (e.isMiddleButtonDown()) {
+                tx[0] = panStart[2] + e.getX() - panStart[0];
+                ty[0] = panStart[3] + e.getY() - panStart[1];
+                applyTransform.run();
+                drawConnectors(overlay, foreignKeys, world);
+            }
+        });
+        viewport.setOnMouseReleased(e -> viewport.setCursor(Cursor.DEFAULT));
+
+        // Scroll = zoom toward cursor, Shift+Scroll = pan left/right
+        viewport.setOnScroll(e -> {
+            if (e.isShiftDown()) {
+                tx[0] -= e.getDeltaY();
+                applyTransform.run();
+                drawConnectors(overlay, foreignKeys, world);
+            } else {
+                double oldScale = scale;
+                scale = Math.max(SCALE_MIN, Math.min(SCALE_MAX,
+                        scale * (e.getDeltaY() > 0 ? 1.1 : 1.0 / 1.1)));
+                if (scale == oldScale) return;
+                tx[0] = e.getX() - (e.getX() - tx[0]) * (scale / oldScale);
+                ty[0] = e.getY() - (e.getY() - ty[0]) * (scale / oldScale);
+                applyTransform.run();
+                drawConnectors(overlay, foreignKeys, world);
+            }
+            e.consume();
+        });
+
+        viewport.setVisible(false);
+        setCenter(viewport);
+        Platform.runLater(() -> {
+            tx[0] = viewport.getWidth()  / 2.0 - (CANVAS_W / 2.0) * scale;
+            ty[0] = viewport.getHeight() / 2.0 - (CANVAS_H / 2.0) * scale;
+            applyTransform.run();
+            drawConnectors(overlay, foreignKeys, world);
+            viewport.setVisible(true);
+        });
     }
 
+    private void drawGrid(javafx.scene.canvas.Canvas gridCanvas, double w, double h) {
+        javafx.scene.canvas.GraphicsContext gc = gridCanvas.getGraphicsContext2D();
+        gc.setFill(javafx.scene.paint.Color.web("#F5F6F5"));
+        gc.fillRect(0, 0, w, h);
+
+        final double CELL = 28;
+        gc.setFill(javafx.scene.paint.Color.web("#C8D0C8"));
+        for (double x = 0; x < w; x += CELL) {
+            for (double y = 0; y < h; y += CELL) {
+                gc.fillOval(x - 1.2, y - 1.2, 2.4, 2.4);
+            }
+        }
+    }
     public VBox buildCard(Table table) {
         String selectedSchemaName = selectedTab != null
                 ? (String) selectedTab.getUserData()
@@ -1027,35 +1153,34 @@ public class SchemasRoot extends BorderPane {
                 "-fx-faint-focus-color: transparent;";
     }
 
-    private void makeDraggable(VBox card, Pane overlay, List<String[]> foreignKeys, StackPane stack, String schemaName, String tableName) {
+    private void makeDraggable(VBox card, Pane overlay, List<String[]> foreignKeys,
+                               StackPane world, String schemaName, String tableName) {
         final double[] prev = new double[2];
-
         card.setOnMousePressed(e -> {
-            prev[0] = e.getSceneX();
-            prev[1] = e.getSceneY();
-            card.toFront();
-            e.consume();
+            if (e.isPrimaryButtonDown()) {
+                prev[0] = e.getSceneX();
+                prev[1] = e.getSceneY();
+                card.toFront();
+                e.consume();
+            }
         });
-
         card.setOnMouseDragged(e -> {
-            double dx = e.getSceneX() - prev[0];
-            double dy = e.getSceneY() - prev[1];
-            card.setCursor(Cursor.CLOSED_HAND);
-            card.setLayoutX(Math.max(0, card.getLayoutX() + dx));
-            card.setLayoutY(Math.max(0, card.getLayoutY() + dy));
-            prev[0] = e.getSceneX();
-            prev[1] = e.getSceneY();
-            drawConnectors(overlay, foreignKeys, stack);
-            e.consume();
+            if (e.isPrimaryButtonDown()) {
+                card.setLayoutX(Math.max(0, card.getLayoutX() + (e.getSceneX() - prev[0]) / scale));
+                card.setLayoutY(Math.max(0, card.getLayoutY() + (e.getSceneY() - prev[1]) / scale));
+                prev[0] = e.getSceneX();
+                prev[1] = e.getSceneY();
+                card.setCursor(Cursor.CLOSED_HAND);
+                drawConnectors(overlay, foreignKeys, world);
+                e.consume();
+            }
         });
-
         card.setOnMouseReleased(e -> {
             card.setCursor(Cursor.DEFAULT);
             savePosition(schemaName, tableName, card.getLayoutX(), card.getLayoutY());
             e.consume();
         });
     }
-
     private void drawConnectors(Pane overlay, List<String[]> foreignKeys, StackPane stack) {
         overlay.getChildren().clear();
         if (stack.getScene() == null) return;
