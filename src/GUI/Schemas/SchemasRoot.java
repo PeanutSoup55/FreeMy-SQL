@@ -841,6 +841,7 @@ public class SchemasRoot extends BorderPane {
         });
 
         viewport.setVisible(false);
+        setRight(null);
         setCenter(viewport);
         Platform.runLater(() -> {
             tx[0] = viewport.getWidth()  / 2.0 - (CANVAS_W / 2.0) * scale;
@@ -864,6 +865,7 @@ public class SchemasRoot extends BorderPane {
             }
         }
     }
+
     public VBox buildCard(Table table) {
         String selectedSchemaName = selectedTab != null
                 ? (String) selectedTab.getUserData()
@@ -916,7 +918,9 @@ public class SchemasRoot extends BorderPane {
                     }
                 }
             }
-            setCenter(new TableEdit(this, selectedSchemaName, table, pks));
+            TableEdit editTable = new TableEdit(this, selectedSchemaName, table, pks);
+            setRight(editTable);
+            editTable.setPrefWidth(400);
         });
 
         deleteItem.setOnAction(e -> {
@@ -1013,7 +1017,7 @@ public class SchemasRoot extends BorderPane {
             row.setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
 
             Text colText = new Text(prefix + field.getType() + "  " + field.getName());
-            colText.setFont(Font.font("Monospace", 11));
+            colText.setFont(Font.font("System", FontWeight.BOLD, 11));
             colText.setFill(txtColor);
             row.getChildren().add(colText);
             card.getChildren().add(row);

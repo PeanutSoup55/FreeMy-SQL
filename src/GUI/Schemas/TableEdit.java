@@ -38,57 +38,68 @@ public class TableEdit extends VBox {
 
         availablePKs.setAll(schemaPKList);
 
-        setSpacing(20);
-        setPadding(new Insets(28, 32, 28, 32));
-        setStyle("-fx-background-color: #F2F4F2;");
+        setSpacing(10);
+        setPadding(new Insets(14));
+        setStyle("-fx-background-color: #14171F;");
+        setPrefWidth(400);
+        setMaxWidth(400);
 
         Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47;" +
-                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 13;" +
-                "-fx-border-color: transparent;");
+        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6E9BFF;" +
+                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 11;" +
+                "-fx-border-color: transparent; -fx-padding: 0;");
         backBtn.setOnAction(e -> root.createTables());
 
-        Text title = new Text("Edit Table  —  " + table.getName());
-        title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.web("#1E3D30"));
+        Text title = new Text("Edit Table — " + table.getName());
+        title.setFont(Font.font("System", FontWeight.BOLD, 15));
+        title.setFill(Color.web("#EDEFF4"));
+        title.setWrappingWidth(370);
 
-        HBox header = new HBox(14, backBtn, title);
-        header.setAlignment(Pos.CENTER_LEFT);
+        VBox header = new VBox(4, backBtn, title);
 
         tableNameField = new TextField(table.getName());
         tableNameField.setPromptText("Table Name...");
-        tableNameField.setMaxWidth(380);
-        tableNameField.setStyle(SchemasAdd.fieldStyle());
+        tableNameField.setMaxWidth(Double.MAX_VALUE);
+        tableNameField.setStyle("-fx-background-color: #1F2330; -fx-border-color: #343B4D;" +
+                "-fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #EDEFF4;" +
+                "-fx-font-size: 13; -fx-padding: 8 10;");
 
         Field pkField = table.getFields().stream()
                 .filter(Field::isPrimary)
                 .findFirst()
                 .orElse(null);
 
+        // --- PK card ---
         pkNameField = new TextField(pkField != null ? pkField.getName() : "");
         pkNameField.setPromptText("Primary Key...");
         pkNameField.setDisable(true);
+        pkNameField.setMaxWidth(Double.MAX_VALUE);
         pkNameField.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;" +
-                "-fx-font-size: 13; -fx-padding: 12 16; -fx-opacity: 0.6;");
-        HBox.setHgrow(pkNameField, Priority.ALWAYS);
+                "-fx-text-fill: #B7BDCC; -fx-font-size: 12; -fx-padding: 0;");
 
         Label pkBadge = new Label("PK");
-        pkBadge.setStyle("-fx-background-color: #2E5A47; -fx-text-fill: white;" +
-                "-fx-background-radius: 4; -fx-font-size: 10; -fx-font-weight: bold;" +
+        pkBadge.setStyle("-fx-background-color: #6E9BFF; -fx-text-fill: #14171F;" +
+                "-fx-background-radius: 3; -fx-font-size: 9; -fx-font-weight: bold;" +
                 "-fx-padding: 2 6;");
 
         pkTypeBox = SchemasAdd.greenCombo(FXCollections.observableArrayList(SchemasAdd.SQL_TYPES));
         pkTypeBox.setValue(pkField != null ? normalizeType(pkField.getType()) : "INT");
-        pkTypeBox.setPrefWidth(165);
+        pkTypeBox.setPrefWidth(130);
         pkTypeBox.setDisable(true);
-        pkTypeBox.setStyle(pkTypeBox.getStyle() + " -fx-opacity: 0.6;");
+        pkTypeBox.setStyle("-fx-background-color: #2A2F3F; -fx-text-fill: #8B92A6;" +
+                "-fx-font-size: 11; -fx-background-radius: 5;");
 
-        HBox pkRow = new HBox(8, pkNameField, pkBadge, pkTypeBox);
-        pkRow.setAlignment(Pos.CENTER_LEFT);
-        pkRow.setPadding(new Insets(0, 14, 0, 0));
-        pkRow.setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
+        HBox pkNameRow = new HBox(6, pkNameField, pkBadge);
+        pkNameRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(pkNameField, Priority.ALWAYS);
 
-        fieldsContainer = new VBox(0);
+        VBox pkCard = new VBox(6, pkNameRow, pkTypeBox);
+        pkCard.setPadding(new Insets(10, 12, 10, 12));
+        pkCard.setStyle("-fx-background-color: #1B1E29; -fx-background-radius: 7;" +
+                "-fx-border-color: #262B3A; -fx-border-radius: 7; -fx-border-width: 1;");
+
+        // --- Field list ---
+        fieldsContainer = new VBox(8);
 
         for (Field f : table.getFields()) {
             if (!f.isPrimary()) {
@@ -96,15 +107,18 @@ public class TableEdit extends VBox {
             }
         }
 
-        Button addFieldBtn = SchemasAdd.filledBtn("Add Field");
-        addFieldBtn.setOnAction(e -> addFieldEntry(null));
-        HBox addRow = new HBox(addFieldBtn);
-        addRow.setAlignment(Pos.CENTER);
-        addRow.setPadding(new Insets(14, 0, 14, 0));
+        VBox fieldsBlock = new VBox(8, pkCard, fieldsContainer);
 
-        VBox card = new VBox(pkRow, fieldsContainer, addRow);
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 12;" +
-                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 14, 0, 0, 3);");
+        Button addFieldBtn = new Button("+ Add Field");
+        addFieldBtn.setMaxWidth(Double.MAX_VALUE);
+        addFieldBtn.setStyle("-fx-background-color: #232838; -fx-text-fill: #6E9BFF;" +
+                "-fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 6;" +
+                "-fx-border-color: #343B4D; -fx-border-radius: 6; -fx-border-width: 1;" +
+                "-fx-cursor: hand; -fx-padding: 9 0;");
+        addFieldBtn.setOnAction(e -> addFieldEntry(null));
+
+        VBox card = new VBox(10, fieldsBlock, addFieldBtn);
+        card.setPadding(new Insets(2, 0, 0, 0));
 
         ScrollPane scroll = new ScrollPane(card);
         scroll.setFitToWidth(true);
@@ -112,13 +126,14 @@ public class TableEdit extends VBox {
         scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
-        Button saveBtn = SchemasAdd.filledBtn("Save Changes");
+        Button saveBtn = new Button("Save Changes");
+        saveBtn.setMaxWidth(Double.MAX_VALUE);
+        saveBtn.setStyle("-fx-background-color: #6E9BFF; -fx-text-fill: #14171F;" +
+                "-fx-font-size: 13; -fx-font-weight: bold; -fx-background-radius: 6;" +
+                "-fx-cursor: hand; -fx-padding: 10 0;");
         saveBtn.setOnAction(e -> saveChanges());
 
-        HBox bottomRow = new HBox(saveBtn);
-        bottomRow.setAlignment(Pos.CENTER_LEFT);
-
-        getChildren().addAll(header, tableNameField, scroll, bottomRow);
+        getChildren().addAll(header, tableNameField, scroll, saveBtn);
     }
 
     private void addFieldEntry(Field prefill) {
@@ -170,7 +185,7 @@ public class TableEdit extends VBox {
         return upper;
     }
 
-    static class FieldEntry extends HBox {
+    static class FieldEntry extends VBox {
 
         private final TextField nameField;
         private final ComboBox<String> typeBox;
@@ -178,38 +193,53 @@ public class TableEdit extends VBox {
         private final String originalName;
 
         FieldEntry(TableEdit parent, Field prefill) {
-            setAlignment(Pos.CENTER_LEFT);
-            setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
-            setPadding(new Insets(0, 14, 0, 0));
+            setSpacing(6);
+            setPadding(new Insets(10, 12, 10, 12));
+            setStyle("-fx-background-color: #1B1E29; -fx-background-radius: 7;" +
+                    "-fx-border-color: #262B3A; -fx-border-radius: 7; -fx-border-width: 1;");
 
             this.originalName = prefill != null ? prefill.getName() : null;
 
             nameField = new TextField(prefill != null ? prefill.getName() : "");
             nameField.setPromptText("Field Name...");
+            nameField.setMaxWidth(Double.MAX_VALUE);
             nameField.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;" +
-                    "-fx-font-size: 13; -fx-padding: 12 16;");
-            HBox.setHgrow(nameField, Priority.ALWAYS);
+                    "-fx-text-fill: #EDEFF4; -fx-font-size: 13; -fx-padding: 0;");
 
             typeBox = SchemasAdd.greenCombo(FXCollections.observableArrayList(SchemasAdd.SQL_TYPES));
-            typeBox.setPromptText("Select Type");
-            typeBox.setPrefWidth(165);
+            typeBox.setPromptText("Type");
+            typeBox.setMaxWidth(Double.MAX_VALUE);
+            typeBox.setStyle("-fx-background-color: #2A2F3F; -fx-text-fill: #EDEFF4;" +
+                    "-fx-font-size: 11; -fx-background-radius: 5;");
             if (prefill != null && prefill.getType() != null) {
                 typeBox.setValue(normalizeType(prefill.getType()));
             }
 
             refBox = SchemasAdd.greenCombo(parent.availablePKs);
-            refBox.setPromptText("Reference To");
-            refBox.setPrefWidth(180);
+            refBox.setPromptText("No reference");
+            refBox.setMaxWidth(Double.MAX_VALUE);
+            refBox.setStyle("-fx-background-color: #2A2F3F; -fx-text-fill: #8B92A6;" +
+                    "-fx-font-size: 11; -fx-background-radius: 5;");
             if (prefill != null && prefill.getReference() != null && !prefill.getReference().isEmpty()) {
                 refBox.setValue(prefill.getReference());
+                refBox.setStyle("-fx-background-color: #2A2F3F; -fx-text-fill: #EDEFF4;" +
+                        "-fx-font-size: 11; -fx-background-radius: 5;");
             }
 
-            Button removeBtn = new Button("✕");
-            removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #BBBBBB;" +
-                    "-fx-cursor: hand; -fx-font-size: 13; -fx-padding: 8 10;");
+            Button removeBtn = new Button("Remove");
+            removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6B7286;" +
+                    "-fx-cursor: hand; -fx-font-size: 10; -fx-padding: 4 0 0 0;" +
+                    "-fx-underline: true;");
             removeBtn.setOnAction(e -> parent.removeField(this));
 
-            getChildren().addAll(nameField, typeBox, refBox, removeBtn);
+            HBox typeRefRow = new HBox(6, typeBox, refBox);
+            HBox.setHgrow(typeBox, Priority.ALWAYS);
+            HBox.setHgrow(refBox, Priority.ALWAYS);
+
+            HBox bottomRow = new HBox(removeBtn);
+            bottomRow.setAlignment(Pos.CENTER_RIGHT);
+
+            getChildren().addAll(nameField, typeRefRow, bottomRow);
         }
 
         Field buildField() {
