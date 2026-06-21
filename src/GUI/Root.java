@@ -21,7 +21,6 @@ import java.util.Objects;
 
 public class Root extends BorderPane {
 
-    private boolean isCollapsed = false;
     private String  activeMenu = "Schemas";
     private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs", "SSH", "Send Feedback..."};
     private final String[] ICONS  = {
@@ -131,7 +130,10 @@ public class Root extends BorderPane {
                 if (schemasRoot == null) schemasRoot = new SchemasRoot();
                 setCenter(schemasRoot);
             }
-            case "Query", "Credentials", "Logs", "SSH" -> setCenter(new TempCred());
+            case "Query" -> setCenter(new Query());
+            case "Credentials" -> setCenter(new Creds());
+            case "Logs" -> setCenter(new LogsRoot());
+            case "SSH" -> setCenter(new SSHConnection(() -> switchCenterContent("Schemas")));
             case "Send Feedback..." -> setCenter(new FeedbackDialog());
         }
     }

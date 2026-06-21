@@ -40,7 +40,7 @@ public class TableEdit extends VBox {
 
         setSpacing(10);
         setPadding(new Insets(14));
-        setStyle("-fx-background-color: #14171F;");
+        setStyle("-fx-background-color: #1C2333;");
         setPrefWidth(400);
         setMaxWidth(400);
 
