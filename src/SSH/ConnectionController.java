@@ -22,7 +22,8 @@ public class ConnectionController {
         this.sshService = sshService;
         this.onSuccess  = onSuccess;
 
-        view.getConnectButton().setOnAction(e -> processConnectionRequest());
+        view.getConnectButton().setOnAction(e -> processConnectionRequest(false));
+        view.getConnectAndSaveButton().setOnAction(e -> processConnectionRequest(true));
         view.getDisconnectButton().setOnAction(e -> processDisconnectRequest());
 
         refreshStatusFromManager();
@@ -32,13 +33,18 @@ public class ConnectionController {
     // Connection
     // -------------------------------------------------------------------------
 
-    private void processConnectionRequest() {
-        // Save-and-connect in one click: if a profile name was typed, persist
-        // it before doing anything else. Leaving the name blank just connects.
-        view.maybeSaveProfileFromForm();
+    private void processConnectionRequest(boolean saveFirst) {
+        if (saveFirst) {
+            boolean saved = view.saveProfileFromForm();
+            if (!saved) {
+                view.setStatus("Enter a profile name above to save it.", "#B8860B", false);
+                return;
+            }
+        }
 
         view.setStatus("Establishing SSH tunnel...", "#B8860B", false);
         view.getConnectButton().setDisable(true);
+        view.getConnectAndSaveButton().setDisable(true);
         view.setDiagramStage(0);
 
         String sHost = view.getSshHost();
@@ -65,7 +71,6 @@ public class ConnectionController {
                 long setupMs = System.currentTimeMillis() - startedAt;
 
                 ConnectionManager.getInstance().attach(conn, sshService, dHost, dName, setupMs);
-                ConnectionProfileStore.addHistory(dHost, dName);
 
                 Platform.runLater(() -> {
                     creds.setTunnel(ConnectionManager.getInstance().getLocalBridgePort(), dUser, dPass);
@@ -80,6 +85,7 @@ public class ConnectionController {
                 Platform.runLater(() -> {
                     view.setStatus("Failed: " + ex.getMessage(), "#D9434B", false);
                     view.getConnectButton().setDisable(false);
+                    view.getConnectAndSaveButton().setDisable(false);
                 });
             }
         }).start();
@@ -95,6 +101,7 @@ public class ConnectionController {
         view.switchToForm();
         view.setStatus("Disconnected.", "#6B7280", false);
         view.getConnectButton().setDisable(false);
+        view.getConnectAndSaveButton().setDisable(false);
         view.getDisconnectButton().setDisable(true);
         view.setDiagramStage(0);
     }
@@ -108,6 +115,7 @@ public class ConnectionController {
         if (ConnectionManager.getInstance().isAlive()) {
             view.setStatus("Tunnel already active.", "#1E9E5A", true);
             view.getConnectButton().setDisable(true);
+            view.getConnectAndSaveButton().setDisable(true);
             view.getDisconnectButton().setDisable(false);
             view.switchToDashboard();
         } else {

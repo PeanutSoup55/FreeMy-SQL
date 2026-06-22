@@ -11,34 +11,31 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 
-import java.util.List;
-
 /**
  * The SSH portal panel. Wires itself up the moment it is placed on screen —
  * no user action is needed to start the service, and the Main entry point
  * is never touched.
  *
- * Shows a credentials form (with saved profiles + recent history) while
- * disconnected, and swaps to a live dashboard (tunnel diagram + server
- * stats) once a connection is established.
+ * Shows a credentials form (with saved profiles) while disconnected, and
+ * swaps to a live dashboard (tunnel diagram + server stats) once a
+ * connection is established.
  *
- * @param onConnected  Runnable called after a successful connection.
- *                     Pass a lambda from your layout to switch pages:
- *                     new SSHConnection(() -> switchCenterContent("Schemas"))
  */
 public class SSHConnection extends VBox {
 
     // --- Palette (light) ---
-    private static final String BG       = "#F4F5F9";
-    private static final String CARD     = "#FFFFFF";
-    private static final String FIELD_BG = "#F0F2F7";
-    private static final String BORDER   = "#D9DEE8";
-    private static final String ACCENT   = "#3D6FE0";
-    private static final String TEXT     = "#1C2230";
-    private static final String MUTED    = "#6B7280";
-    private static final String GREEN    = "#1E9E5A";
-    private static final String RED      = "#D9434B";
-    private static final String LINE_OFF = "#D7DCE5";
+    private static final String BG        = "#F4F5F9";
+    private static final String CARD      = "#FFFFFF";
+    private static final String FIELD_BG  = "#F7F8FB";
+    private static final String BORDER    = "#E1E5EC";
+    private static final String ACCENT    = "#3D6FE0";
+    private static final String ACCENT_BG = "#EAF0FD";
+    private static final String TEXT      = "#1C2230";
+    private static final String MUTED     = "#6B7280";
+    private static final String GREEN     = "#1E9E5A";
+    private static final String RED       = "#D9434B";
+    private static final String LINE_OFF  = "#D7DCE5";
+    private static final String SHADOW    = "dropshadow(gaussian, rgba(28,34,48,0.06), 14, 0, 0, 3)";
 
     // --- SSH Fields ---
     private final TextField     sshHostField     = new TextField("127.0.0.1");
@@ -54,20 +51,20 @@ public class SSHConnection extends VBox {
     private final TextField     dbNameField      = new TextField("");
 
     // --- Profiles ---
-    private final ComboBox<String> profileSelector  = new ComboBox<>();
-    private final TextField        profileNameField = new TextField();
+    private final ComboBox<String> profileSelector     = new ComboBox<>();
+    private final TextField        profileNameField    = new TextField();
     private final Button           deleteProfileButton = new Button("Delete");
-    private final VBox             historyBox          = new VBox(6);
 
     // --- Controls (shared between form and dashboard) ---
-    private final Button connectButton    = new Button("Connect");
-    private final Button disconnectButton = new Button("Disconnect");
-    private final Label  statusLabel      = new Label("Status: Disconnected");
+    private final Button connectButton         = new Button("Connect");
+    private final Button connectAndSaveButton   = new Button("Connect & Save");
+    private final Button disconnectButton       = new Button("Disconnect");
+    private final Label  statusLabel            = new Label("Status: Disconnected");
 
     // --- Views ---
-    private final VBox formView      = new VBox(18);
-    private final VBox dashboardView = new VBox(20);
-    private final HBox buttonRow     = new HBox(10);
+    private final VBox formView           = new VBox(20);
+    private final VBox dashboardView      = new VBox(20);
+    private final HBox buttonRow          = new HBox(12);
     private final HBox dashboardHeaderRow = new HBox(12);
 
     // --- Diagrams ---
@@ -75,31 +72,30 @@ public class SSHConnection extends VBox {
     private final TunnelDiagram dashboardDiagram = new TunnelDiagram();
 
     // --- Dashboard stat labels ---
-    private final Label connectedTitleLabel  = new Label();
+    private final Label connectedTitleLabel = new Label();
     private final Label uptimeValueLabel     = new Label("0s");
     private final Label bridgePortValueLabel = new Label("—");
     private final Label setupTimeValueLabel  = new Label("—");
-    private final Label versionValueLabel       = new Label("Loading…");
-    private final Label dbUptimeValueLabel      = new Label("Loading…");
-    private final Label threadsValueLabel       = new Label("Loading…");
+    private final Label versionValueLabel        = new Label("Loading…");
+    private final Label dbUptimeValueLabel       = new Label("Loading…");
+    private final Label threadsValueLabel        = new Label("Loading…");
     private final Label maxConnectionsValueLabel = new Label("Loading…");
-    private final Label openTablesValueLabel    = new Label("Loading…");
-    private final Label slowQueriesValueLabel   = new Label("Loading…");
-    private final Label charsetValueLabel       = new Label("Loading…");
-    private final Label dbSizeValueLabel        = new Label("Loading…");
-    private final Label tableCountValueLabel    = new Label("Loading…");
+    private final Label openTablesValueLabel     = new Label("Loading…");
+    private final Label slowQueriesValueLabel    = new Label("Loading…");
+    private final Label charsetValueLabel        = new Label("Loading…");
+    private final Label dbSizeValueLabel         = new Label("Loading…");
+    private final Label tableCountValueLabel     = new Label("Loading…");
 
     private Timeline uptimeTimeline;
 
     public SSHConnection(Runnable onConnected) {
-        super(16);
+        super(20);
         setStyle("-fx-background-color: " + BG + ";");
-        setPadding(new Insets(24));
+        setPadding(new Insets(28));
 
         buildFormView();
         buildDashboardView();
         refreshProfileList();
-        refreshHistory();
 
         getChildren().add(formView);
 
@@ -114,31 +110,41 @@ public class SSHConnection extends VBox {
         styleField(sshHostField); styleField(sshPortField); styleField(sshUserField); styleField(sshPasswordField);
         styleField(dbHostField);  styleField(dbPortField);  styleField(dbUserField);  styleField(dbPasswordField); styleField(dbNameField);
 
-        // -- Profile row: pick a saved profile, or type a name to save this one --
-        Label profileLabel = sectionLabel("PROFILE");
-        profileSelector.setPromptText("Load a saved connection…");
-        profileSelector.setPrefWidth(200);
+        // -- Page header --
+        Label pageTitle = new Label("Database Connection");
+        pageTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 20px; -fx-font-weight: bold;");
+        Label pageSubtitle = new Label("Connect to your MySQL server through a secure SSH tunnel.");
+        pageSubtitle.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 13px;");
+        VBox header = new VBox(4, pageTitle, pageSubtitle);
+
+        // -- Profile card --
+        VBox profileCard = card();
+        Label profileTitle = cardTitle("Saved Connections", "load, save, or remove a profile");
+
+        profileSelector.setPromptText("Select a saved connection…");
+        profileSelector.setPrefWidth(240);
         styleComboBox(profileSelector);
         profileSelector.setOnAction(e -> loadSelectedProfile());
-
-        profileNameField.setPromptText("Name to save (optional)");
-        styleField(profileNameField);
-        profileNameField.setPrefWidth(200);
-
         stylePillButton(deleteProfileButton, CARD, RED, RED);
         deleteProfileButton.setOnAction(e -> deleteSelectedProfile());
 
-        HBox profileRow = new HBox(10, profileSelector, profileNameField, deleteProfileButton);
-        profileRow.setAlignment(Pos.CENTER_LEFT);
+        Label loadLabel = fieldLabel("Load");
+        HBox loadRow = new HBox(10, profileSelector, deleteProfileButton);
+        loadRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label profileHint = new Label("Connect saves automatically under the name above — leave it blank to just connect.");
-        profileHint.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
+        profileNameField.setPromptText("e.g. Production DB");
+        styleField(profileNameField);
+        Label saveLabel = fieldLabel("Save as");
 
-        VBox profileSection = new VBox(8, profileLabel, profileRow, profileHint);
+        GridPane profileGrid = formGrid();
+        profileGrid.add(loadLabel, 0, 0);
+        profileGrid.add(loadRow, 1, 0);
+        profileGrid.add(saveLabel, 0, 1);
+        profileGrid.add(profileNameField, 1, 1);
+        GridPane.setHgrow(profileNameField, Priority.ALWAYS);
+        profileNameField.setMaxWidth(Double.MAX_VALUE);
 
-        // -- History --
-        Label historyLabel = sectionLabel("RECENT");
-        VBox historySection = new VBox(8, historyLabel, historyBox);
+        profileCard.getChildren().addAll(profileTitle, profileGrid);
 
         // -- SSH card --
         VBox sshCard = card();
@@ -169,20 +175,24 @@ public class SSHConnection extends VBox {
         formDiagram.setStage(0);
         HBox diagramWrap = new HBox(formDiagram);
         diagramWrap.setAlignment(Pos.CENTER);
-        diagramWrap.setPadding(new Insets(6, 0, 6, 0));
+        diagramWrap.setPadding(new Insets(4, 0, 4, 0));
 
-        // -- Buttons: only Connect shows pre-connection; Disconnect lives on the dashboard --
-        stylePrimaryButton(connectButton);
+        // -- Buttons: Connect (secondary) vs Connect & Save (primary) --
+        styleSecondaryAccentButton(connectButton);
+        stylePrimaryButton(connectAndSaveButton);
         styleSecondaryDangerButton(disconnectButton);
         disconnectButton.setDisable(true);
-        buttonRow.getChildren().add(connectButton);
+
+        buttonRow.getChildren().addAll(connectButton, connectAndSaveButton);
         buttonRow.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(connectButton, Priority.ALWAYS);
+        HBox.setHgrow(connectAndSaveButton, Priority.ALWAYS);
         connectButton.setMaxWidth(Double.MAX_VALUE);
+        connectAndSaveButton.setMaxWidth(Double.MAX_VALUE);
 
         statusLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
 
-        formView.getChildren().addAll(profileSection, historySection, cardsRow, diagramWrap, buttonRow, statusLabel);
+        formView.getChildren().addAll(header, profileCard, cardsRow, diagramWrap, buttonRow, statusLabel);
     }
 
     // -------------------------------------------------------------------------
@@ -190,7 +200,7 @@ public class SSHConnection extends VBox {
     // -------------------------------------------------------------------------
 
     private void buildDashboardView() {
-        connectedTitleLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 16px; -fx-font-weight: bold;");
+        connectedTitleLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 18px; -fx-font-weight: bold;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -200,10 +210,10 @@ public class SSHConnection extends VBox {
         dashboardDiagram.setStage(3);
         HBox diagramWrap = new HBox(dashboardDiagram);
         diagramWrap.setAlignment(Pos.CENTER);
-        diagramWrap.setPadding(new Insets(8, 0, 8, 0));
+        diagramWrap.setPadding(new Insets(10, 0, 10, 0));
 
         // -- Stat chips --
-        HBox statsRow = new HBox(14,
+        HBox statsRow = new HBox(16,
                 statChip("TUNNEL UPTIME", uptimeValueLabel),
                 statChip("BRIDGE PORT", bridgePortValueLabel),
                 statChip("SETUP TIME", setupTimeValueLabel));
@@ -235,7 +245,7 @@ public class SSHConnection extends VBox {
     public void switchToDashboard() {
         ConnectionManager mgr = ConnectionManager.getInstance();
         getChildren().setAll(dashboardView);
-        buttonRow.getChildren().remove(disconnectButton);
+        buttonRow.getChildren().clear();
         dashboardHeaderRow.getChildren().add(disconnectButton);
 
         String host = mgr.getConnectedHost();
@@ -255,7 +265,9 @@ public class SSHConnection extends VBox {
         stopUptimeTimeline();
         getChildren().setAll(formView);
         dashboardHeaderRow.getChildren().remove(disconnectButton);
-        buttonRow.getChildren().add(disconnectButton);
+        if (!buttonRow.getChildren().contains(connectButton)) {
+            buttonRow.getChildren().addAll(connectButton, connectAndSaveButton);
+        }
         formDiagram.setStage(0);
         versionValueLabel.setText("Loading…");
         dbUptimeValueLabel.setText("Loading…");
@@ -266,7 +278,6 @@ public class SSHConnection extends VBox {
         charsetValueLabel.setText("Loading…");
         dbSizeValueLabel.setText("Loading…");
         tableCountValueLabel.setText("Loading…");
-        refreshHistory();
     }
 
     private void startUptimeTimeline() {
@@ -342,10 +353,14 @@ public class SSHConnection extends VBox {
         profileNameField.setText(p.name);
     }
 
-    /** Called by the controller right before connecting. No-op if no name was typed. */
-    public void maybeSaveProfileFromForm() {
+    /**
+     * Saves the current form values under the typed profile name.
+     * Called by the controller when "Connect & Save" is pressed.
+     * Returns false (and saves nothing) if no name was typed.
+     */
+    public boolean saveProfileFromForm() {
         String name = profileNameField.getText() == null ? "" : profileNameField.getText().trim();
-        if (name.isEmpty()) return;
+        if (name.isEmpty()) return false;
 
         ConnectionProfileStore.Profile p = new ConnectionProfileStore.Profile();
         p.name    = name;
@@ -362,6 +377,7 @@ public class SSHConnection extends VBox {
         ConnectionProfileStore.save(p);
         refreshProfileList();
         profileSelector.setValue(p.name);
+        return true;
     }
 
     private void deleteSelectedProfile() {
@@ -371,34 +387,6 @@ public class SSHConnection extends VBox {
         profileSelector.setValue(null);
         profileNameField.clear();
         refreshProfileList();
-    }
-
-    // -------------------------------------------------------------------------
-    // History
-    // -------------------------------------------------------------------------
-
-    private void refreshHistory() {
-        historyBox.getChildren().clear();
-        List<String[]> history = ConnectionProfileStore.getHistory();
-
-        if (history.isEmpty()) {
-            Label empty = new Label("No recent connections yet.");
-            empty.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
-            historyBox.getChildren().add(empty);
-            return;
-        }
-
-        for (String[] entry : history) {
-            String host = entry[0];
-            String db   = entry[1];
-            Hyperlink link = new Hyperlink((db == null || db.isBlank() ? "(no db)" : db) + "  →  " + host);
-            link.setStyle("-fx-text-fill: " + ACCENT + "; -fx-font-size: 12px; -fx-underline: false; -fx-padding: 0;");
-            link.setOnAction(e -> {
-                dbHostField.setText(host);
-                dbNameField.setText(db);
-            });
-            historyBox.getChildren().add(link);
-        }
     }
 
     // -------------------------------------------------------------------------
@@ -435,8 +423,9 @@ public class SSHConnection extends VBox {
     public String getDbPassword() { return dbPasswordField.getText(); }
     public String getDbName()     { return dbNameField.getText().trim(); }
 
-    public Button getConnectButton()    { return connectButton; }
-    public Button getDisconnectButton() { return disconnectButton; }
+    public Button getConnectButton()         { return connectButton; }
+    public Button getConnectAndSaveButton()  { return connectAndSaveButton; }
+    public Button getDisconnectButton()      { return disconnectButton; }
 
     private int parsePort(TextField field, int fallback) {
         try { return Integer.parseInt(field.getText().trim()); }
@@ -456,7 +445,7 @@ public class SSHConnection extends VBox {
                         "-fx-border-radius: 6;" +
                         "-fx-background-radius: 6;" +
                         "-fx-highlight-fill: " + ACCENT + ";" +
-                        "-fx-padding: 6 10 6 10;"
+                        "-fx-padding: 8 10 8 10;"
         );
     }
 
@@ -471,13 +460,14 @@ public class SSHConnection extends VBox {
     }
 
     private VBox card() {
-        VBox box = new VBox(12);
-        box.setPadding(new Insets(16));
+        VBox box = new VBox(14);
+        box.setPadding(new Insets(18));
         box.setStyle(
                 "-fx-background-color: " + CARD + ";" +
-                        "-fx-background-radius: 10;" +
+                        "-fx-background-radius: 12;" +
                         "-fx-border-color: " + BORDER + ";" +
-                        "-fx-border-radius: 10;"
+                        "-fx-border-radius: 12;" +
+                        "-fx-effect: " + SHADOW + ";"
         );
         return box;
     }
@@ -494,22 +484,21 @@ public class SSHConnection extends VBox {
         return combined;
     }
 
-    private Label sectionLabel(String text) {
+    private Label fieldLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px; -fx-font-weight: bold;");
+        l.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
         return l;
     }
 
     private GridPane formGrid() {
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
+        grid.setHgap(12);
+        grid.setVgap(12);
         return grid;
     }
 
     private void addRow(GridPane grid, int row, String labelText, javafx.scene.control.Control field) {
-        Label label = new Label(labelText);
-        label.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        Label label = fieldLabel(labelText);
         grid.add(label, 0, row);
         grid.add(field, 1, row);
         GridPane.setHgrow(field, Priority.ALWAYS);
@@ -517,8 +506,7 @@ public class SSHConnection extends VBox {
     }
 
     private void addInfoRow(GridPane grid, int row, String labelText, Label valueLabel) {
-        Label label = new Label(labelText);
-        label.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        Label label = fieldLabel(labelText);
         valueLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px; -fx-font-weight: bold;");
         grid.add(label, 0, row);
         grid.add(valueLabel, 1, row);
@@ -527,14 +515,15 @@ public class SSHConnection extends VBox {
     private VBox statChip(String label, Label valueLabel) {
         Label l = new Label(label);
         l.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px; -fx-font-weight: bold;");
-        valueLabel.setStyle("-fx-text-fill: " + ACCENT + "; -fx-font-size: 18px; -fx-font-weight: bold;");
-        VBox box = new VBox(4, l, valueLabel);
-        box.setPadding(new Insets(12, 16, 12, 16));
+        valueLabel.setStyle("-fx-text-fill: " + ACCENT + "; -fx-font-size: 20px; -fx-font-weight: bold;");
+        VBox box = new VBox(6, l, valueLabel);
+        box.setPadding(new Insets(14, 18, 14, 18));
         box.setStyle(
                 "-fx-background-color: " + CARD + ";" +
-                        "-fx-background-radius: 10;" +
+                        "-fx-background-radius: 12;" +
                         "-fx-border-color: " + BORDER + ";" +
-                        "-fx-border-radius: 10;"
+                        "-fx-border-radius: 12;" +
+                        "-fx-effect: " + SHADOW + ";"
         );
         return box;
     }
@@ -544,8 +533,21 @@ public class SSHConnection extends VBox {
                 "-fx-background-color: " + ACCENT + ";" +
                         "-fx-text-fill: #FFFFFF;" +
                         "-fx-font-weight: bold;" +
+                        "-fx-font-size: 13px;" +
                         "-fx-background-radius: 8;" +
-                        "-fx-padding: 10 18 10 18;" +
+                        "-fx-padding: 12 18 12 18;" +
+                        "-fx-cursor: hand;"
+        );
+    }
+
+    private void styleSecondaryAccentButton(Button button) {
+        button.setStyle(
+                "-fx-background-color: " + ACCENT_BG + ";" +
+                        "-fx-text-fill: " + ACCENT + ";" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-padding: 12 18 12 18;" +
                         "-fx-cursor: hand;"
         );
     }
@@ -569,7 +571,7 @@ public class SSHConnection extends VBox {
                         "-fx-border-color: " + border + ";" +
                         "-fx-border-radius: 6;" +
                         "-fx-background-radius: 6;" +
-                        "-fx-padding: 5 12 5 12;" +
+                        "-fx-padding: 7 14 7 14;" +
                         "-fx-font-size: 11px;" +
                         "-fx-cursor: hand;"
         );
@@ -589,7 +591,7 @@ public class SSHConnection extends VBox {
 
         TunnelDiagram() {
             setAlignment(Pos.CENTER);
-            setSpacing(6);
+            setSpacing(10);
             getChildren().addAll(
                     node(laptopDot, "Your Machine"),
                     line1,
@@ -610,9 +612,9 @@ public class SSHConnection extends VBox {
             r.setPrefHeight(2);
             r.setMinHeight(2);
             r.setMaxHeight(2);
-            r.setPrefWidth(56);
-            r.setMinWidth(36);
-            HBox.setHgrow(r, Priority.ALWAYS);
+            r.setPrefWidth(70);
+            r.setMinWidth(70);
+            r.setMaxWidth(70);
             r.setStyle("-fx-background-color: " + LINE_OFF + ";");
             return r;
         }
@@ -622,6 +624,7 @@ public class SSHConnection extends VBox {
             l.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
             VBox box = new VBox(6, dot, l);
             box.setAlignment(Pos.CENTER);
+            box.setMinWidth(90);
             return box;
         }
 

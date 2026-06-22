@@ -7,18 +7,10 @@ import java.util.List;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
-/**
- * Persists saved SSH/DB connection profiles and a short "recent connections"
- * history to the OS-level Preferences store — same mechanism already used
- * for schema card drag positions. Plaintext storage, by design choice:
- * convenience over security for a local desktop tool.
- */
 public class ConnectionProfileStore {
 
     private static final Preferences PROFILES = Preferences.userRoot().node("freemyquery/ssh_profiles");
-    private static final Preferences HISTORY  = Preferences.userRoot().node("freemyquery/ssh_history");
     private static final String SEP = "\u0001";
-    private static final int MAX_HISTORY = 5;
 
     private ConnectionProfileStore() {}
 
@@ -60,47 +52,5 @@ public class ConnectionProfileStore {
 
     public static void delete(String name) {
         PROFILES.remove(name);
-    }
-
-    /** Records a successful connection. Keeps only the most recent MAX_HISTORY entries. */
-    public static void addHistory(String host, String dbName) {
-        try {
-            List<String> entries = new ArrayList<>();
-            for (String k : HISTORY.keys()) entries.add(HISTORY.get(k, ""));
-
-            entries.add(System.currentTimeMillis() + SEP + host + SEP + dbName);
-            entries.sort((a, b) -> Long.compare(timestampOf(b), timestampOf(a)));
-
-            if (entries.size() > MAX_HISTORY) {
-                entries = entries.subList(0, MAX_HISTORY);
-            }
-
-            for (String k : HISTORY.keys()) HISTORY.remove(k);
-            for (int i = 0; i < entries.size(); i++) HISTORY.put("h" + i, entries.get(i));
-        } catch (BackingStoreException ignored) {}
-    }
-
-    /** Each entry: {host, dbName}, newest first. */
-    public static List<String[]> getHistory() {
-        List<String[]> result = new ArrayList<>();
-        try {
-            List<String> entries = new ArrayList<>();
-            for (String k : HISTORY.keys()) entries.add(HISTORY.get(k, ""));
-            entries.sort((a, b) -> Long.compare(timestampOf(b), timestampOf(a)));
-
-            for (String e : entries) {
-                String[] parts = e.split(SEP, -1);
-                if (parts.length == 3) result.add(new String[]{parts[1], parts[2]});
-            }
-        } catch (BackingStoreException ignored) {}
-        return result;
-    }
-
-    private static long timestampOf(String entry) {
-        try {
-            return Long.parseLong(entry.split(SEP, -1)[0]);
-        } catch (Exception e) {
-            return 0L;
-        }
     }
 }

@@ -133,7 +133,7 @@ public class Root extends BorderPane {
             case "Query" -> setCenter(new Query());
             case "Credentials" -> setCenter(new Creds());
             case "Logs" -> setCenter(new LogsRoot());
-            case "SSH" -> setCenter(new SSHConnection(() -> switchCenterContent("Schemas")));
+            case "SSH" -> setCenter(new SSHConnection(null));
             case "Send Feedback..." -> setCenter(new FeedbackDialog());
         }
     }
