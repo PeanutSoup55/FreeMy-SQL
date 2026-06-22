@@ -25,7 +25,6 @@ public class ConnectionController {
         view.getConnectButton().setOnAction(e -> processConnectionRequest());
         view.getDisconnectButton().setOnAction(e -> processDisconnectRequest());
 
-        // Reflect any existing live connection immediately when the panel opens
         refreshStatusFromManager();
     }
 
@@ -34,8 +33,13 @@ public class ConnectionController {
     // -------------------------------------------------------------------------
 
     private void processConnectionRequest() {
-        view.setStatus("Establishing SSH tunnel...", "orange", false);
+        // Save-and-connect in one click: if a profile name was typed, persist
+        // it before doing anything else. Leaving the name blank just connects.
+        view.maybeSaveProfileFromForm();
+
+        view.setStatus("Establishing SSH tunnel...", "#B8860B", false);
         view.getConnectButton().setDisable(true);
+        view.setDiagramStage(0);
 
         String sHost = view.getSshHost();
         int    sPort = view.getSshPort();
@@ -48,30 +52,33 @@ public class ConnectionController {
         String dPass = view.getDbPassword();
         String dName = view.getDbName();
 
-        // Network I/O off the JavaFX thread
+        long startedAt = System.currentTimeMillis();
+
         new Thread(() -> {
             try {
                 Connection conn = sshService.connect(
                         sHost, sPort, sUser, sPass,
-                        dHost, dPort, dUser, dPass, dName
+                        dHost, dPort, dUser, dPass, dName,
+                        stage -> Platform.runLater(() -> view.setDiagramStage(stage))
                 );
 
-                // Store in the shared singleton so every other view can use it
-                ConnectionManager.getInstance().attach(conn, sshService);
+                long setupMs = System.currentTimeMillis() - startedAt;
+
+                ConnectionManager.getInstance().attach(conn, sshService, dHost, dName, setupMs);
+                ConnectionProfileStore.addHistory(dHost, dName);
 
                 Platform.runLater(() -> {
-                    creds.setTunnel(3309, dUser, dPass);
-                    view.setStatus("Tunnel secured — connection live.", "green", true);
-                    view.getConnectButton().setDisable(true);
+                    creds.setTunnel(ConnectionManager.getInstance().getLocalBridgePort(), dUser, dPass);
+                    view.setStatus("Tunnel secured — connection live.", "#1E9E5A", true);
                     view.getDisconnectButton().setDisable(false);
+                    view.switchToDashboard();
 
-                    // Tell the parent layout to navigate (e.g. switch to Schemas)
                     if (onSuccess != null) onSuccess.run();
                 });
 
             } catch (Exception ex) {
                 Platform.runLater(() -> {
-                    view.setStatus("Failed: " + ex.getMessage(), "red", false);
+                    view.setStatus("Failed: " + ex.getMessage(), "#D9434B", false);
                     view.getConnectButton().setDisable(false);
                 });
             }
@@ -85,21 +92,24 @@ public class ConnectionController {
     private void processDisconnectRequest() {
         ConnectionManager.getInstance().teardown();
         creds.clearTunnel();
-        view.setStatus("Disconnected.", "#555", false);
+        view.switchToForm();
+        view.setStatus("Disconnected.", "#6B7280", false);
         view.getConnectButton().setDisable(false);
         view.getDisconnectButton().setDisable(true);
+        view.setDiagramStage(0);
     }
 
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
-    /** Keeps the status label honest if the user navigates away and comes back. */
+    /** Keeps the panel honest if the user navigates away and comes back. */
     private void refreshStatusFromManager() {
         if (ConnectionManager.getInstance().isAlive()) {
-            view.setStatus("Tunnel already active.", "green", true);
+            view.setStatus("Tunnel already active.", "#1E9E5A", true);
             view.getConnectButton().setDisable(true);
             view.getDisconnectButton().setDisable(false);
+            view.switchToDashboard();
         } else {
             view.getDisconnectButton().setDisable(true);
         }
