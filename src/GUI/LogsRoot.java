@@ -19,6 +19,21 @@ import java.util.concurrent.TimeUnit;
 
 public class LogsRoot extends BorderPane {
 
+    // --- Palette (matches SSHConnection's light theme) ---
+    private static final String BG        = "#F4F5F9";
+    private static final String CARD      = "#FFFFFF";
+    private static final String FIELD_BG  = "#F7F8FB";
+    private static final String BORDER    = "#E1E5EC";
+    private static final String ACCENT    = "#3D6FE0";
+    private static final String ACCENT_BG = "#EAF0FD";
+    private static final String TEXT      = "#1C2230";
+    private static final String MUTED     = "#6B7280";
+    private static final String GREEN     = "#1E9E5A";
+    private static final String GREEN_BG  = "#E8F8EF";
+    private static final String RED       = "#D9434B";
+    private static final String RED_BG    = "#FCEAEC";
+    private static final String SHADOW    = "dropshadow(gaussian, rgba(28,34,48,0.06), 14, 0, 0, 3)";
+
     private final TableView<String[]> table = new TableView<>();
     private final ComboBox<String> filterBox;
     private final TextField limitField;
@@ -26,12 +41,12 @@ public class LogsRoot extends BorderPane {
     private ScheduledExecutorService scheduler;
 
     public LogsRoot() {
-        setPadding(new Insets(24, 28, 24, 28));
-        setStyle("-fx-background-color: #F2F4F2;");
+        setPadding(new Insets(28));
+        setStyle("-fx-background-color: " + BG + ";");
 
         Text title = new Text("MySQL Logs");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.web("#1E3D30"));
+        title.setFill(Color.web(TEXT));
 
         filterBox = new ComboBox<>(FXCollections.observableArrayList(
                 "ALL", "Query", "Execute", "Connect", "Quit", "Init DB"));
@@ -41,13 +56,7 @@ public class LogsRoot extends BorderPane {
 
         limitField = new TextField("200");
         limitField.setPrefWidth(70);
-        limitField.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-border-color: #D0D8D0;" +
-                        "-fx-border-radius: 8;" +
-                        "-fx-padding: 8 10;" +
-                        "-fx-font-size: 13;");
+        styleField(limitField);
 
         Button refreshBtn = filledBtn();
         refreshBtn.setOnAction(e -> loadLogs());
@@ -86,7 +95,7 @@ public class LogsRoot extends BorderPane {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPlaceholder(styledPlaceholder());
         table.setStyle(
-                "-fx-background-color: white;" +
+                "-fx-background-color: " + CARD + ";" +
                         "-fx-background-radius: 12;" +
                         "-fx-border-color: transparent;");
 
@@ -97,28 +106,37 @@ public class LogsRoot extends BorderPane {
             protected void updateItem(String[] row, boolean empty) {
                 super.updateItem(row, empty);
                 if (empty || row == null) {
-                    setStyle("-fx-background-color: white;");
+                    setStyle("-fx-background-color: " + CARD + ";");
                     return;
                 }
                 int idx = getIndex();
-                String base = (idx % 2 == 0) ? "#FFFFFF" : "#F7FAF8";
+                String base = (idx % 2 == 0) ? CARD : FIELD_BG;
                 setStyle(switch (row[2] == null ? "" : row[2]) {
                     case "Query",
                          "Execute" -> "-fx-background-color: " + base + ";";
-                    case "Connect" -> "-fx-background-color: #EDF5F1;";
-                    case "Quit" -> "-fx-background-color: #FDF6EE;";
+                    case "Connect" -> "-fx-background-color: " + GREEN_BG + ";";
+                    case "Quit" -> "-fx-background-color: " + RED_BG + ";";
                     default -> "-fx-background-color: " + base + ";";
                 });
             }
         });
 
         statusLabel = new Label("Ready.");
-        statusLabel.setTextFill(Color.web("#888888"));
+        statusLabel.setTextFill(Color.web(MUTED));
         statusLabel.setFont(Font.font("System", 12));
-        statusLabel.setPadding(new Insets(6, 0, 0, 2));
+        statusLabel.setPadding(new Insets(10, 0, 0, 2));
 
-        VBox center = new VBox(0, header, table, statusLabel);
+        VBox tableCard = new VBox(table);
+        tableCard.setStyle(
+                "-fx-background-color: " + CARD + ";" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-border-color: " + BORDER + ";" +
+                        "-fx-border-radius: 12;" +
+                        "-fx-effect: " + SHADOW + ";");
         VBox.setVgrow(table, Priority.ALWAYS);
+
+        VBox center = new VBox(0, header, tableCard, statusLabel);
+        VBox.setVgrow(tableCard, Priority.ALWAYS);
         setCenter(center);
         db.EnableLogging();
         loadLogs();
@@ -126,7 +144,7 @@ public class LogsRoot extends BorderPane {
 
     private void loadLogs() {
         statusLabel.setText("Loading…");
-        statusLabel.setTextFill(Color.web("#888888"));
+        statusLabel.setTextFill(Color.web(MUTED));
 
         int limit = 200;
         try { limit = Integer.parseInt(limitField.getText().trim()); }
@@ -141,7 +159,7 @@ public class LogsRoot extends BorderPane {
                 table.setItems(FXCollections.observableArrayList(rows));
                 statusLabel.setText(rows.size() + " rows  ·  last updated " +
                         java.time.LocalTime.now().withNano(0));
-                statusLabel.setTextFill(Color.web("#888888"));
+                statusLabel.setTextFill(Color.web(MUTED));
             });
         });
     }
@@ -158,8 +176,9 @@ public class LogsRoot extends BorderPane {
                     () -> Platform.runLater(this::loadLogs), 0, 5, TimeUnit.SECONDS);
             btn.setText("⏹  Stop Auto");
             btn.setStyle(
-                    "-fx-background-color: #CC5500;" +
-                            "-fx-text-fill: white;" +
+                    "-fx-background-color: transparent;" +
+                            "-fx-text-fill: " + RED + ";" +
+                            "-fx-border-color: " + RED + ";" +
                             "-fx-border-radius: 8;" +
                             "-fx-background-radius: 8;" +
                             "-fx-font-weight: bold;" +
@@ -170,10 +189,8 @@ public class LogsRoot extends BorderPane {
             scheduler.shutdownNow();
             btn.setText("▶  Auto-refresh");
             btn.setStyle(
-                    "-fx-background-color: white;" +
-                            "-fx-text-fill: #2E5A47;" +
-                            "-fx-border-color: #2E5A47;" +
-                            "-fx-border-radius: 8;" +
+                    "-fx-background-color: " + ACCENT_BG + ";" +
+                            "-fx-text-fill: " + ACCENT + ";" +
                             "-fx-background-radius: 8;" +
                             "-fx-font-weight: bold;" +
                             "-fx-cursor: hand;" +
@@ -186,7 +203,7 @@ public class LogsRoot extends BorderPane {
     private void styleTableHeaders() {
         table.getStylesheets().add("data:text/css," +
                 ".table-view .column-header-background {" +
-                "   -fx-background-color: %232E5A47;" +
+                "   -fx-background-color: %233D6FE0;" +
                 "   -fx-background-radius: 10 10 0 0;" +
                 "}" +
                 ".table-view .column-header, .table-view .filler {" +
@@ -205,10 +222,10 @@ public class LogsRoot extends BorderPane {
                 "   -fx-padding: 6 10;" +
                 "}" +
                 ".table-row-cell:selected {" +
-                "   -fx-background-color: %232E5A4730;" +
+                "   -fx-background-color: %233D6FE030;" +
                 "}" +
                 ".table-row-cell:selected .table-cell {" +
-                "   -fx-text-fill: %231E3D30;" +
+                "   -fx-text-fill: %231C2230;" +
                 "}");
     }
 
@@ -233,10 +250,10 @@ public class LogsRoot extends BorderPane {
                     bar.setStyle("-fx-background-radius: 2; -fx-background-color: " +
                             switch (s) {
                                 case "Query",
-                                     "Execute" -> "#2E5A47;";
-                                case "Connect" -> "#3A6B8A;";
-                                case "Quit" -> "#8A3A3A;";
-                                default -> "#888888;";
+                                     "Execute" -> ACCENT + ";";
+                                case "Connect" -> GREEN + ";";
+                                case "Quit" -> RED + ";";
+                                default -> MUTED + ";";
                             });
 
                     Label lbl = new Label(s.toUpperCase());
@@ -244,10 +261,10 @@ public class LogsRoot extends BorderPane {
                     lbl.setTextFill(Color.web(
                             switch (s) {
                                 case "Query",
-                                     "Execute" -> "#2E5A47";
-                                case "Connect" -> "#3A6B8A";
-                                case "Quit" -> "#8A3A3A";
-                                default -> "#888888";
+                                     "Execute" -> ACCENT;
+                                case "Connect" -> GREEN;
+                                case "Quit" -> RED;
+                                default -> MUTED;
                             }));
 
                     cell.getChildren().addAll(bar, lbl);
@@ -259,7 +276,7 @@ public class LogsRoot extends BorderPane {
                 if (idx == 3) {
                     Text t = new Text(s);
                     t.setFont(Font.font("Monospace", 11));
-                    t.setFill(Color.web("#2A2A2A"));
+                    t.setFill(Color.web(TEXT));
                     t.wrappingWidthProperty().bind(tc.widthProperty().subtract(20));
                     setGraphic(t);
                     setText(null);
@@ -269,7 +286,7 @@ public class LogsRoot extends BorderPane {
 
                 setText(s);
                 setFont(Font.font("System", 12));
-                setTextFill(Color.web("#444444"));
+                setTextFill(Color.web(TEXT));
                 setGraphic(null);
             }
         });
@@ -280,7 +297,7 @@ public class LogsRoot extends BorderPane {
 
     private static Label styledPlaceholder() {
         Label l = new Label("No logs loaded — press Refresh.");
-        l.setTextFill(Color.web("#AAAAAA"));
+        l.setTextFill(Color.web(MUTED));
         l.setFont(Font.font("System", 13));
         return l;
     }
@@ -288,23 +305,38 @@ public class LogsRoot extends BorderPane {
 
     private static void styleCombo(ComboBox<String> cb) {
         cb.setStyle(
-                "-fx-background-color: #2E5A47;" +
-                        "-fx-background-radius: 8;" +
+                "-fx-background-color: " + FIELD_BG + ";" +
+                        "-fx-border-color: " + BORDER + ";" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
                         "-fx-cursor: hand;" +
                         "-fx-padding: 2 4;");
         cb.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(String s, boolean empty) {
                 super.updateItem(s, empty);
                 setText(empty || s == null ? "" : s);
-                setTextFill(Color.WHITE);
+                setTextFill(Color.web(TEXT));
                 setStyle("-fx-background-color: transparent; -fx-font-weight: bold;");
             }
         });
     }
 
+    private static void styleField(TextField field) {
+        field.setStyle(
+                "-fx-background-color: " + FIELD_BG + ";" +
+                        "-fx-text-fill: " + TEXT + ";" +
+                        "-fx-prompt-text-fill: #9AA3B2;" +
+                        "-fx-border-color: " + BORDER + ";" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-highlight-fill: " + ACCENT + ";" +
+                        "-fx-padding: 8 10 8 10;" +
+                        "-fx-font-size: 13;");
+    }
+
     private static Label smallLabel(String text) {
         Label l = new Label(text);
-        l.setTextFill(Color.web("#666666"));
+        l.setTextFill(Color.web(MUTED));
         l.setFont(Font.font("System", FontWeight.BOLD, 12));
         return l;
     }
@@ -312,7 +344,7 @@ public class LogsRoot extends BorderPane {
     private static Button filledBtn() {
         Button b = new Button("↻  Refresh");
         b.setStyle(
-                "-fx-background-color: #2E5A47;" +
+                "-fx-background-color: " + ACCENT + ";" +
                         "-fx-text-fill: white;" +
                         "-fx-background-radius: 8;" +
                         "-fx-font-weight: bold;" +
@@ -325,10 +357,8 @@ public class LogsRoot extends BorderPane {
     private static Button outlineBtn() {
         Button b = new Button("▶  Auto-refresh");
         b.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-text-fill: #2E5A47;" +
-                        "-fx-border-color: #2E5A47;" +
-                        "-fx-border-radius: 8;" +
+                "-fx-background-color: " + ACCENT_BG + ";" +
+                        "-fx-text-fill: " + ACCENT + ";" +
                         "-fx-background-radius: 8;" +
                         "-fx-font-weight: bold;" +
                         "-fx-cursor: hand;" +
