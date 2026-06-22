@@ -6,47 +6,97 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.text.Font;
 
 import java.sql.SQLException;
 
 public class Creds extends VBox {
 
-    private static final String GREEN = "#2F5230";
-    private static final String GREEN_HOVER = "#3d6b40";
-    private static final String TEXT_MAIN = "#1a1a1a";
-    private static final String TEXT_MUTED = "#6b7280";
-    private static final String BORDER = "#e0e0e0";
+    // --- Palette (matches the rest of the app's light theme) ---
+    private static final String BG          = "#F4F5F9";
+    private static final String CARD        = "#FFFFFF";
+    private static final String FIELD_BG    = "#F7F8FB";
+    private static final String BORDER      = "#E1E5EC";
+    private static final String ACCENT      = "#3D6FE0";
+    private static final String ACCENT_DARK = "#2F58C4";
+    private static final String ACCENT_BG   = "#EAF0FD";
+    private static final String TEXT        = "#1C2230";
+    private static final String MUTED       = "#6B7280";
+    private static final String GREEN       = "#1E9E5A";
+    private static final String RED         = "#D9434B";
+    private static final String SHADOW      = "dropshadow(gaussian, rgba(28,34,48,0.06), 14, 0, 0, 3)";
 
     private ComboBox<String> profileBox;
     private TextField urlField, userField, initialsField;
     private PasswordField passField;
     private Label statusLabel;
+    private Button save;
 
     public Creds() {
-        setSpacing(14);
-        setPadding(new Insets(24));
-        setStyle("-fx-background-color: transparent;");
+        setSpacing(20);
+        setPadding(new Insets(28));
+        setStyle("-fx-background-color: " + BG + ";");
 
-        Label title = new Label("Credentials");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + TEXT_MAIN + ";");
-
-        getChildren().addAll(title, buildProfileBar(), buildFormCard(), buildActionRow());
+        getChildren().addAll(buildHeader(), buildProfileBar(), buildFormCard(), buildActionRow());
         populateProfiles();
     }
 
+    // -------------------------------------------------------------------------
+    // Header
+    // -------------------------------------------------------------------------
+
+    private HBox buildHeader() {
+        StackPane badge = iconBadge("\uD83D\uDD11", ACCENT_BG, ACCENT, 40);
+
+        Label title = new Label("Credentials");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + TEXT + ";");
+
+        Label subtitle = new Label("Manage saved database login profiles.");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: " + MUTED + ";");
+
+        VBox titleBlock = new VBox(3, title, subtitle);
+        titleBlock.setAlignment(Pos.CENTER_LEFT);
+
+        HBox header = new HBox(14, badge, titleBlock);
+        header.setAlignment(Pos.CENTER_LEFT);
+        return header;
+    }
+
+    private StackPane iconBadge(String glyph, String bg, String fg, double size) {
+        Circle circle = new Circle(size / 2);
+        circle.setFill(Color.web(bg));
+
+        Label glyphLabel = new Label(glyph);
+        glyphLabel.setFont(Font.font("System", size * 0.46));
+        glyphLabel.setTextFill(Color.web(fg));
+
+        StackPane badge = new StackPane(circle, glyphLabel);
+        badge.setMinSize(size, size);
+        badge.setMaxSize(size, size);
+        return badge;
+    }
+
+    // -------------------------------------------------------------------------
+    // Profile bar
+    // -------------------------------------------------------------------------
+
     private HBox buildProfileBar() {
         profileBox = new ComboBox<>();
-        profileBox.setPrefHeight(36);
+        profileBox.setPrefHeight(38);
         HBox.setHgrow(profileBox, Priority.ALWAYS);
         profileBox.setMaxWidth(Double.MAX_VALUE);
         profileBox.setOnAction(e -> loadSelectedProfile());
+        profileBox.setStyle(
+                "-fx-background-color: " + FIELD_BG + ";" +
+                        "-fx-border-color: " + BORDER + ";" +
+                        "-fx-border-radius: 7;" +
+                        "-fx-background-radius: 7;"
+        );
 
-        Button addBtn = new Button("+");
-        Button delBtn = new Button("X");
-        for (Button b : new Button[]{addBtn, delBtn}) {
-            b.setPrefSize(36, 36);
-            b.setStyle("-fx-background-color: white; -fx-border-color: " + BORDER + "; -fx-border-radius: 7; -fx-background-radius: 7; -fx-cursor: hand; -fx-font-size: 14px;");
-        }
+        Button addBtn = iconButton("+");
+        Button delBtn = iconButton("\u2715"); // ✕
         addBtn.setOnAction(e -> addProfile());
         delBtn.setOnAction(e -> deleteProfile());
 
@@ -54,6 +104,24 @@ public class Creds extends VBox {
         row.setAlignment(Pos.CENTER_LEFT);
         return row;
     }
+
+    private Button iconButton(String text) {
+        Button b = new Button(text);
+        b.setPrefSize(38, 38);
+        b.setStyle(
+                "-fx-background-color: " + ACCENT_BG + ";" +
+                        "-fx-text-fill: " + ACCENT + ";" +
+                        "-fx-background-radius: 7;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;"
+        );
+        return b;
+    }
+
+    // -------------------------------------------------------------------------
+    // Form card
+    // -------------------------------------------------------------------------
 
     private VBox buildFormCard() {
         urlField = field("jdbc:mysql://host:3306/db");
@@ -66,32 +134,64 @@ public class Creds extends VBox {
             if (n != null && n.length() > 4) initialsField.setText(n.substring(0, 4));
         });
 
-        VBox card = new VBox(12,
+        Label cardTitle = new Label("Connection Details");
+        cardTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: " + TEXT + ";");
+        Label cardSubtitle = new Label("Used when no SSH tunnel is active.");
+        cardSubtitle.setStyle("-fx-font-size: 11px; -fx-text-fill: " + MUTED + ";");
+        VBox cardHeading = new VBox(2, cardTitle, cardSubtitle);
+
+        VBox fields = new VBox(12,
                 row("Host URL", urlField),
                 row("User", userField),
                 row("Password", passField),
                 row("Initials", initialsField)
         );
-        card.setPadding(new Insets(16));
-        card.setStyle("-fx-background-color: white; -fx-border-color: " + BORDER + "; -fx-border-radius: 10; -fx-background-radius: 10;");
+
+        VBox card = new VBox(16, cardHeading, fields);
+        card.setPadding(new Insets(18));
+        card.setStyle(
+                "-fx-background-color: " + CARD + ";" +
+                        "-fx-border-color: " + BORDER + ";" +
+                        "-fx-border-radius: 12;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-effect: " + SHADOW + ";"
+        );
         return card;
     }
 
+    // -------------------------------------------------------------------------
+    // Action row
+    // -------------------------------------------------------------------------
+
     private HBox buildActionRow() {
         statusLabel = new Label();
-        statusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + TEXT_MUTED + ";");
+        statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: " + MUTED + ";");
         HBox.setHgrow(statusLabel, Priority.ALWAYS);
 
-        Button save = new Button("Test & Save");
-        save.setStyle("-fx-background-color: " + GREEN + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 9 20; -fx-cursor: hand;");
-        save.setOnMouseEntered(e -> save.setStyle(save.getStyle().replace(GREEN, GREEN_HOVER)));
-        save.setOnMouseExited(e ->  save.setStyle(save.getStyle().replace(GREEN_HOVER, GREEN)));
+        save = new Button("Test & Save");
+        save.setStyle(primaryStyle(ACCENT));
+        save.setOnMouseEntered(e -> save.setStyle(primaryStyle(ACCENT_DARK)));
+        save.setOnMouseExited(e -> save.setStyle(primaryStyle(ACCENT)));
         save.setOnAction(e -> testAndSave());
 
         HBox row = new HBox(12, statusLabel, save);
         row.setAlignment(Pos.CENTER_LEFT);
         return row;
     }
+
+    private String primaryStyle(String bg) {
+        return "-fx-background-color: " + bg + ";" +
+                "-fx-text-fill: white;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 8;" +
+                "-fx-padding: 10 22;" +
+                "-fx-cursor: hand;" +
+                "-fx-font-size: 13;";
+    }
+
+    // -------------------------------------------------------------------------
+    // Profile logic (unchanged)
+    // -------------------------------------------------------------------------
 
     private void populateProfiles() {
         String[] names = creds.getAllProfileNames();
@@ -191,8 +291,12 @@ public class Creds extends VBox {
 
     private void status(String msg, boolean error) {
         statusLabel.setText(msg);
-        statusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (error ? "#cc3333" : "#2a7a2a") + ";");
+        statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: " + (error ? RED : GREEN) + ";");
     }
+
+    // -------------------------------------------------------------------------
+    // Field helpers
+    // -------------------------------------------------------------------------
 
     private TextField field(String prompt) {
         TextField tf = new TextField();
@@ -202,13 +306,23 @@ public class Creds extends VBox {
     }
 
     private void styleField(TextField tf) {
-        tf.setStyle("-fx-background-color: #f9f9f9; -fx-border-color: " + BORDER + "; -fx-border-radius: 7; -fx-background-radius: 7; -fx-padding: 7 10; -fx-font-size: 13px;");
+        tf.setStyle(
+                "-fx-background-color: " + FIELD_BG + ";" +
+                        "-fx-text-fill: " + TEXT + ";" +
+                        "-fx-prompt-text-fill: #9AA3B2;" +
+                        "-fx-border-color: " + BORDER + ";" +
+                        "-fx-border-radius: 7;" +
+                        "-fx-background-radius: 7;" +
+                        "-fx-highlight-fill: " + ACCENT + ";" +
+                        "-fx-padding: 8 10;" +
+                        "-fx-font-size: 13px;"
+        );
     }
 
     private HBox row(String label, TextField field) {
         Label lbl = new Label(label);
         lbl.setMinWidth(72);
-        lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: " + TEXT_MUTED + ";");
+        lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: " + MUTED + ";");
         HBox.setHgrow(field, Priority.ALWAYS);
         HBox row = new HBox(10, lbl, field);
         row.setAlignment(Pos.CENTER_LEFT);
