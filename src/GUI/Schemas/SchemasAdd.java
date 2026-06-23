@@ -40,7 +40,7 @@ public class SchemasAdd extends VBox {
         this.root = root;
         setSpacing(20);
         setPadding(new Insets(28, 32, 28, 32));
-        setStyle("-fx-background-color: #F2F4F2;");
+        setStyle("-fx-background-color: #F4F5F9;");
 
         // Header row
         Button backBtn = new Button("← Back");

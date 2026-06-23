@@ -30,11 +30,11 @@ public class Query extends VBox {
 
     public Query() {
         setSpacing(0);
-        setStyle("-fx-background-color: #F2F4F2;");
+        setStyle("-fx-background-color: #F4F5F9");
 
         Text title = new Text("SQL Query");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.web("#1E3D30"));
+        title.setFill(Color.web("#3D6FE0"));
 
         HBox header = new HBox(title);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -103,7 +103,7 @@ public class Query extends VBox {
         );
 
         Button runBtn = new Button("▶  Run");
-        runBtn.setStyle("-fx-background-color: #2E5A47;" +
+        runBtn.setStyle("-fx-background-color: #3D6FE0;" +
                 "-fx-text-fill: white;" +
                 "-fx-font-weight: bold;" +
                 "-fx-background-radius: 8;" +
@@ -115,8 +115,8 @@ public class Query extends VBox {
 
         Button clearBtn = new Button("Clear Input/Output");
         clearBtn.setStyle("-fx-background-color: white;" +
-                "-fx-text-fill: #2E5A47;" +
-                "-fx-border-color: #2E5A47;" +
+                "-fx-text-fill: #3D6FE0;" +
+                "-fx-border-color: #3D6FE0;" +
                 "-fx-border-radius: 8;" +
                 "-fx-background-radius: 8;" +
                 "-fx-font-weight: bold;" +
@@ -157,8 +157,8 @@ public class Query extends VBox {
 
         Button histClear = new Button("Clear History");
         histClear.setStyle("-fx-background-color: white;" +
-                "-fx-text-fill: #2E5A47;" +
-                "-fx-border-color: #2E5A47;" +
+                "-fx-text-fill: #3D6FE0;" +
+                "-fx-border-color: #3D6FE0;" +
                 "-fx-border-radius: 8;" +
                 "-fx-background-radius: 8;" +
                 "-fx-font-weight: bold;" +

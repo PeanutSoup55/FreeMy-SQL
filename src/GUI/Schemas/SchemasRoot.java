@@ -732,7 +732,7 @@ public class SchemasRoot extends BorderPane {
         world.setPrefSize(CANVAS_W, CANVAS_H);
 
         Pane viewport = new Pane(world);
-        viewport.setStyle("-fx-background-color: #F5F6F5;");
+        viewport.setStyle("-fx-background-color: #F4F5F9;");
         viewport.layoutBoundsProperty().addListener((obs, o, n) ->
                 viewport.setClip(new javafx.scene.shape.Rectangle(n.getWidth(), n.getHeight())));
 
@@ -854,7 +854,7 @@ public class SchemasRoot extends BorderPane {
 
     private void drawGrid(javafx.scene.canvas.Canvas gridCanvas, double w, double h) {
         javafx.scene.canvas.GraphicsContext gc = gridCanvas.getGraphicsContext2D();
-        gc.setFill(javafx.scene.paint.Color.web("#F5F6F5"));
+        gc.setFill(javafx.scene.paint.Color.web("#F4F5F9"));
         gc.fillRect(0, 0, w, h);
 
         final double CELL = 28;
