@@ -35,6 +35,11 @@ public class Root extends BorderPane {
 
     public Root() {
         schemasRoot = new SchemasRoot();
+        schemasRoot.setOnRequestNavigateHome(() -> {
+            activeMenu = "Schemas";
+            setCenter(schemasRoot);
+            createSide();
+        });
         createSide();
         setCenter(schemasRoot);
     }

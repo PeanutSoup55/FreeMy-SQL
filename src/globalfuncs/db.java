@@ -775,30 +775,91 @@ public class db {
                     for (Field f : remoteTable.getFields())
                         remoteColTypes.put(f.getName().toLowerCase(), f.getType().toLowerCase());
 
+                    Set<String> claimedRemoteCols = new HashSet<>(); // columns accounted for by a local field
+
                     for (Field localField : localTable.getFields()) {
-                        if (localField.isPrimary()) continue;
                         if (localField.getName() == null || localField.getName().isBlank()) continue;
 
-                        String colKey  = localField.getName().toLowerCase();
-                        String sqlType = localField.getType();
-                        if (sqlType == null || sqlType.isBlank()) continue;
+                        String colKey = localField.getName().toLowerCase();
 
-                        if (!remoteColTypes.containsKey(colKey)) {
+                        if (localField.isPrimary()) {
+                            claimedRemoteCols.add(colKey);
+                            continue;
+                        }
+
+                        String rawType = localField.getType();
+                        if (rawType == null || rawType.isBlank()) {
+                            claimedRemoteCols.add(colKey);
+                            continue;
+                        }
+                        String sqlType = normalizeSqlType(rawType);
+
+                        String oldKey = (localField.getOldName() != null && !localField.getOldName().isBlank())
+                                ? localField.getOldName().toLowerCase()
+                                : null;
+
+                        if (oldKey != null && !oldKey.equals(colKey) && remoteColTypes.containsKey(oldKey)
+                                && !remoteColTypes.containsKey(colKey)) {
+                            // ── Renamed locally ──
+                            String renameSql = "ALTER TABLE `" + schemaName + "`.`" + localTable.getName() +
+                                    "` RENAME COLUMN `" + localField.getOldName() + "` TO `" + localField.getName() + "`";
+                            System.out.println("[PUSH RENAME] " + renameSql);
+                            stmt.executeUpdate(renameSql);
+                            log.append("Renamed column: ")
+                                    .append(localTable.getName()).append(".").append(localField.getOldName())
+                                    .append(" → ").append(localField.getName()).append("\n");
+
+                            String oldType = remoteColTypes.remove(oldKey);
+                            remoteColTypes.put(colKey, oldType);
+                            claimedRemoteCols.add(colKey);
+
+                            if (!remoteColTypes.get(colKey).equalsIgnoreCase(sqlType)) {
+                                String modSql = "ALTER TABLE `" + schemaName + "`.`" + localTable.getName() +
+                                        "` MODIFY COLUMN `" + localField.getName() + "` " + sqlType;
+                                System.out.println("[PUSH ALTER] " + modSql);
+                                stmt.executeUpdate(modSql);
+                                log.append("Modified: ")
+                                        .append(localTable.getName()).append(".").append(localField.getName())
+                                        .append(" → ").append(sqlType).append("\n");
+                            }
+
+                        } else if (!remoteColTypes.containsKey(colKey)) {
+                            // ── New column → ADD ──
                             String sql = "ALTER TABLE `" + schemaName + "`.`" + localTable.getName() +
                                     "` ADD COLUMN `" + localField.getName() + "` " + sqlType;
                             System.out.println("[PUSH ALTER] " + sql);
                             stmt.executeUpdate(sql);
                             log.append("Added column: ")
                                     .append(localTable.getName()).append(".").append(localField.getName()).append("\n");
+                            claimedRemoteCols.add(colKey);
 
-                        } else if (!remoteColTypes.get(colKey).equalsIgnoreCase(sqlType)) {
+                        } else {
+                            claimedRemoteCols.add(colKey);
+                            if (!remoteColTypes.get(colKey).equalsIgnoreCase(sqlType)) {
+                                String sql = "ALTER TABLE `" + schemaName + "`.`" + localTable.getName() +
+                                        "` MODIFY COLUMN `" + localField.getName() + "` " + sqlType;
+                                System.out.println("[PUSH ALTER] " + sql);
+                                stmt.executeUpdate(sql);
+                                log.append("Modified: ")
+                                        .append(localTable.getName()).append(".").append(localField.getName())
+                                        .append(" → ").append(sqlType).append("\n");
+                            }
+                        }
+                    }
+
+                    // ── Drop remote columns that no longer exist locally ──────────────
+                    for (String remoteColKey : remoteColTypes.keySet()) {
+                        if (!claimedRemoteCols.contains(remoteColKey)) {
+                            String origName = null;
+                            for (Field f : remoteTable.getFields()) {
+                                if (f.getName().equalsIgnoreCase(remoteColKey)) { origName = f.getName(); break; }
+                            }
                             String sql = "ALTER TABLE `" + schemaName + "`.`" + localTable.getName() +
-                                    "` MODIFY COLUMN `" + localField.getName() + "` " + sqlType;
-                            System.out.println("[PUSH ALTER] " + sql);
+                                    "` DROP COLUMN `" + origName + "`";
+                            System.out.println("[PUSH DROP] " + sql);
                             stmt.executeUpdate(sql);
-                            log.append("Modified: ")
-                                    .append(localTable.getName()).append(".").append(localField.getName())
-                                    .append(" → ").append(sqlType).append("\n");
+                            log.append("Dropped column: ")
+                                    .append(localTable.getName()).append(".").append(origName).append("\n");
                         }
                     }
                 }

@@ -44,7 +44,11 @@ public class SchemasRoot extends BorderPane {
         createTables();
     }
 
+    private Runnable onRequestNavigateHome = () -> {};
 
+    public void setOnRequestNavigateHome(Runnable callback) {
+        this.onRequestNavigateHome = callback;
+    }
 
 
     public Node buildSidebarContent() {
@@ -515,6 +519,7 @@ public class SchemasRoot extends BorderPane {
 
         schemaRow.setOnMouseClicked(e -> {
             if (e.getButton() == MouseButton.PRIMARY) {
+                onRequestNavigateHome.run();   // ← bring Root's center back to Schemas
                 if (selectedTab != null && selectedTab != schemaRow) {
                     Label prevName = (Label) selectedTab.getChildren().get(1);
                     applyDefaultStyle(selectedTab, prevName);
@@ -523,7 +528,6 @@ public class SchemasRoot extends BorderPane {
                 selectedTab      = schemaRow;
                 isRemoteSelected = remote;
                 createTables();
-
             } else if (e.getButton() == MouseButton.SECONDARY) {
                 ContextMenu contextMenu = new ContextMenu();
                 contextMenu.setStyle(
