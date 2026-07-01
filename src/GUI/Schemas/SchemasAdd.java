@@ -115,7 +115,7 @@ public class SchemasAdd extends VBox {
             schema.addTable(t);
         }
         db.MakeSchema(schema);
-        root.refresh();
+        root.refreshData();
     }
 
     static String fieldStyle() {
