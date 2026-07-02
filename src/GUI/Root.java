@@ -1,10 +1,7 @@
 package GUI;
 
+import GUI.Schemas.*;
 import GUI.Schemas.LoginGen.LoginGen;
-import GUI.Schemas.SchemasAdd;
-import GUI.Schemas.SchemasRoot;
-import GUI.Schemas.TableCRUD;
-import GUI.Schemas.TableEdit;
 import Objects.*;
 import SSH.SSHConnection;
 import globalfuncs.creds;
@@ -487,7 +484,9 @@ public class Root extends BorderPane {
                                     if (f.isPrimary()) pks.add(t.getName() + "(" + f.getName() + ")");
                                 }
                             }
-                            setCenter(new TableEdit(schemasRoot, schemaName, table, pks)); // CHANGED
+                            TableEdit editTable = new TableEdit(schemasRoot, schemaName, table, pks);
+                            schemasRoot.setRight(editTable);
+                            editTable.setPrefWidth(400);
                         });
 
                         deleteMI.setOnAction(ev -> {
@@ -600,6 +599,12 @@ public class Root extends BorderPane {
             tableList.setManaged(false);
         };
 
+        caretBtn.setOnMouseClicked(e -> {
+            if (tableList.isVisible()) collapse.run();
+            else                       expand.run();
+            e.consume();
+        });
+
         schemaRow.setOnMouseEntered(e -> {
             if (selectedTab != schemaRow)
                 schemaRow.setStyle("-fx-background-color: #EEF1F4;");
@@ -611,7 +616,6 @@ public class Root extends BorderPane {
 
         schemaRow.setOnMouseClicked(e -> {
             if (e.getButton() == MouseButton.PRIMARY) {
-                // CHANGED: was onRequestNavigateHome.run() -- inline the navigate-home behavior
                 boolean alreadyHome = "Schemas".equals(activeMenu) && getCenter() == schemasRoot;
                 if (!alreadyHome) {
                     activeMenu = "Schemas";
@@ -625,10 +629,8 @@ public class Root extends BorderPane {
                 applySelectedStyle(schemaRow, nameLabel);
                 selectedTab      = schemaRow;
                 isRemoteSelected = remote;
-                schemasRoot.setSelectedSchema(schema.getName(), remote); // NEW
-                schemasRoot.createTables(); // CHANGED
-                if (tableList.isVisible()) collapse.run();
-                else                       expand.run();
+                schemasRoot.setSelectedSchema(schema.getName(), remote);
+                schemasRoot.createTables();
                 e.consume();
             } else if (e.getButton() == MouseButton.SECONDARY) {
                 ContextMenu contextMenu = new ContextMenu();
@@ -696,7 +698,20 @@ public class Root extends BorderPane {
                     }
                     contextMenu.getItems().add(generateLoginMenu);
 
+                    MenuItem editSchemaItem = new MenuItem("Edit Schema");
+                    editSchemaItem.setStyle("-fx-font-size: 12px; -fx-padding: 6 12 6 12;");
+                    editSchemaItem.setOnAction(event -> {
+                        setCenter(new SchemasEdit(this, schemasRoot, schema.getName(), () -> {
+                            schemasRoot.refreshData();
+                            schemasRoot.createTables();
+                            createSide();
+                            setCenter(schemasRoot);
+                        }));
+                    });
+                    contextMenu.getItems().add(editSchemaItem);
+
                     MenuItem deleteItem = new MenuItem("Delete " + schema.getName());
+                    deleteItem.setStyle("-fx-font-size: 12px; -fx-padding: 6 12 6 12;");
                     deleteItem.setOnAction(event -> {
                         Dialog<ButtonType> dialog = new Dialog<>();
                         dialog.setTitle("Delete Schema");

@@ -249,6 +249,73 @@ public class db {
         }
     }
 
+    public static void renameSchema(String oldName, String newName) {
+        try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + newName + "`");
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
+
+            List<String> tableNames = new ArrayList<>();
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '" + oldName + "'");
+            while (rs.next()) tableNames.add(rs.getString("TABLE_NAME"));
+            rs.close();
+
+            for (String table : tableNames) {
+                String sql = "RENAME TABLE `" + oldName + "`.`" + table + "` TO `" + newName + "`.`" + table + "`";
+                System.out.println("[SQL] " + sql);
+                stmt.executeUpdate(sql);
+            }
+
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
+            stmt.executeUpdate("DROP DATABASE IF EXISTS `" + oldName + "`");
+            System.out.println("[SQL] Renamed schema: " + oldName + " -> " + newName);
+
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] renameSchema — " + e.getMessage());
+            for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
+        }
+    }
+
+    public static void CreateTable(String schemaName, Table table) {
+        try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
+            stmt.execute("USE `" + schemaName + "`");
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
+
+            StringBuilder query = new StringBuilder(
+                    "CREATE TABLE IF NOT EXISTS `" + schemaName + "`.`" + table.getName() + "` (");
+            List<String> fkClauses = new ArrayList<>();
+
+            for (Field field : table.getFields()) {
+                query.append("`").append(field.getName()).append("` ")
+                        .append(field.getType());
+                if (field.isPrimary())
+                    query.append(" PRIMARY KEY AUTO_INCREMENT");
+                query.append(", ");
+
+                if (field.getReference() != null && !field.getReference().isEmpty()) {
+                    int paren     = field.getReference().indexOf('(');
+                    String refTbl = field.getReference().substring(0, paren);
+                    String refCol = field.getReference().substring(paren + 1, field.getReference().length() - 1);
+                    fkClauses.add("FOREIGN KEY (`" + field.getName() + "`) " + "REFERENCES `" + schemaName + "`.`" + refTbl + "`(`" + refCol + "`)"
+                    );
+                }
+            }
+
+            for (String fk : fkClauses) query.append(fk).append(", ");
+            query.setLength(query.length() - 2);
+            query.append(")");
+            System.out.println("[SQL] " + query);
+            stmt.executeUpdate(query.toString());
+
+            stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
+            System.out.println("[SQL] Created table: " + table.getName());
+
+        } catch (SQLException e) {
+            System.err.println("[SQL ERROR] CreateTable — " + e.getMessage());
+            for (StackTraceElement el : e.getStackTrace()) System.err.println(el);
+        }
+    }
+
     public static void EnableLogging() {
         try (Connection conn = Connect(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("SET GLOBAL log_output = 'TABLE'");
@@ -576,18 +643,6 @@ public class db {
         return rows;
     }
 
-    // =========================================================================
-    // Clone & Push
-    // =========================================================================
-
-    /**
-     * Copies a remote schema (structure + data) to the local MySQL instance.
-     * Any existing local schema with the same name is dropped first so the
-     * clone is always a clean snapshot.
-     *
-     * @param schemaName  name of the remote schema to clone
-     * @return  human-readable summary, or an error message
-     */
     public static String CloneSchemaFromRemote(String schemaName) {
         System.out.println("[CLONE] Starting clone of remote schema: " + schemaName);
 
@@ -708,16 +763,6 @@ public class db {
                 + totalRows + " row(s) copied.";
     }
 
-    /**
-     * Pushes local schema structural changes to the remote server.
-     * Creates missing tables, adds/modifies columns that differ.
-     * Columns removed locally are intentionally left on the remote to
-     * prevent accidental data loss — drop them manually if needed.
-     * Row data is never pushed automatically.
-     *
-     * @param schemaName  name of the local schema to push
-     * @return  human-readable summary, or an error message
-     */
     public static String PushSchemaToRemote(String schemaName) {
         Schema local  = GetTablesInSchema(schemaName);
         Schema remote = GetTablesInSchemaRemote(schemaName);
@@ -956,12 +1001,6 @@ public class db {
                 : log.toString().trim();
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Topological sort so parent tables are inserted before child tables.
-     * Cycles are tolerated — a visited guard prevents infinite recursion.
-     */
     private static List<Table> topoSort(List<Table> tables, List<String[]> foreignKeys) {
         Map<String, Set<String>> deps   = new HashMap<>();
         Map<String, Table>       byName = new HashMap<>();

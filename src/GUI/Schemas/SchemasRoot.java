@@ -1,6 +1,4 @@
 package GUI.Schemas;
-import GUI.Schemas.LoginGen.LoginGen;
-import globalfuncs.creds;
 import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
@@ -8,9 +6,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import globalfuncs.db;
 import javafx.scene.paint.Color;
@@ -230,6 +225,10 @@ public class SchemasRoot extends BorderPane {
     }
 
     public VBox buildCard(Table table) {
+        return buildCard(table, this, () -> {}, () -> {});
+    }
+
+    public VBox buildCard(Table table, BorderPane editHost, Runnable beforeNavigate, Runnable afterDelete) {
         String selectedSchemaName = !this.selectedSchemaName.isEmpty()
                 ? this.selectedSchemaName
                 : (schemas.isEmpty() ? "" : schemas.getFirst().getName());
@@ -267,9 +266,15 @@ public class SchemasRoot extends BorderPane {
             e.consume();
         });
 
-        showDataItem.setOnAction(e -> showTableData(selectedSchemaName, table));
+        showDataItem.setOnAction(e -> {
+            beforeNavigate.run();
+            showTableData(selectedSchemaName, table);
+        });
 
-        crudItem.setOnAction(e -> setCenter(new TableCRUD(this, selectedSchemaName, table)));
+        crudItem.setOnAction(e -> {
+            beforeNavigate.run();
+            setCenter(new TableCRUD(this, selectedSchemaName, table));
+        });
 
         editItem.setOnAction(e -> {
             Schema fullSchema = db.GetTablesInSchema(selectedSchemaName);
@@ -281,8 +286,8 @@ public class SchemasRoot extends BorderPane {
                     }
                 }
             }
-            TableEdit editTable = new TableEdit(this, selectedSchemaName, table, pks);
-            setRight(editTable);
+            TableEdit editTable = new TableEdit(this, editHost, selectedSchemaName, table, pks);
+            editHost.setRight(editTable);
             editTable.setPrefWidth(400);
         });
 
@@ -352,6 +357,7 @@ public class SchemasRoot extends BorderPane {
                 PREFS.remove(selectedSchemaName + "|" + table.getName());
                 db.deleteTable(new Schema(selectedSchemaName), table);
                 createTables();
+                afterDelete.run();
             }
         });
 

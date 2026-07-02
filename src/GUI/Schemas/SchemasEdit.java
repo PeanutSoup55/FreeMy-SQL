@@ -1,4 +1,222 @@
 package GUI.Schemas;
 
-public class SchemasEdit {
+import GUI.Root;
+import Objects.Schema;
+import Objects.Table;
+import Objects.Field;
+import globalfuncs.db;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
+
+import java.util.*;
+import java.util.prefs.Preferences;
+
+public class SchemasEdit extends BorderPane {
+
+    private static final Preferences ORDER_PREFS =
+            Preferences.userRoot().node("Free_My_SQL/table_order");
+
+    private final Root appRoot;
+    private final SchemasRoot root;
+    private final Runnable onDone;
+    private String schemaName;
+
+    private final Text titleText;
+    private final FlowPane tablesGrid = new FlowPane(16, 16);
+    private final List<String> tableOrder = new ArrayList<>();
+
+    public SchemasEdit(Root appRoot, SchemasRoot root, String schemaName, Runnable onDone) {
+        this.appRoot = appRoot;
+        this.root = root;
+        this.schemaName = schemaName;
+        this.onDone = onDone;
+
+        setStyle("-fx-background-color: #F4F5F9;");
+
+        // ── Back button: filled, rounded, white text ─────────────────
+        Button backBtn = new Button("← Back");
+        backBtn.setStyle(
+                "-fx-background-color: #2E5A47;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-font-size: 12;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-padding: 8 16;"
+        );
+        backBtn.setOnAction(e -> onDone.run());
+
+        Button addTableBtn = new Button("+ Add Table");
+        addTableBtn.setStyle(
+                "-fx-background-color: white; -fx-text-fill: #2E5A47;" +
+                        "-fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 6;" +
+                        "-fx-border-color: #2E5A47; -fx-border-radius: 6; -fx-border-width: 1;" +
+                        "-fx-cursor: hand; -fx-padding: 8 14;"
+        );
+        addTableBtn.setOnAction(e -> addNewTable());
+
+        Button deleteSchemaBtn = new Button("Delete Schema");
+        deleteSchemaBtn.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #c0392b;" +
+                        "-fx-font-size: 12; -fx-font-weight: bold; -fx-cursor: hand;" +
+                        "-fx-border-color: #c0392b; -fx-border-radius: 6; -fx-padding: 7 12;"
+        );
+        deleteSchemaBtn.setOnAction(e -> confirmDeleteSchema());
+
+        Region topSpacer = new Region();
+        HBox.setHgrow(topSpacer, Priority.ALWAYS);
+
+        HBox rightGroup = new HBox(8, addTableBtn, deleteSchemaBtn);
+        rightGroup.setAlignment(Pos.CENTER_LEFT);
+
+        HBox topRow = new HBox(16, backBtn, topSpacer, rightGroup);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        titleText = new Text("Edit Schema — " + schemaName);
+        titleText.setFont(Font.font("System", FontWeight.BOLD, 18));
+        titleText.setFill(Color.web("#1C2333"));
+
+        TextField nameField = new TextField(schemaName);
+        nameField.setPromptText("Schema name...");
+        nameField.setStyle("-fx-background-color: white; -fx-border-color: #DADFE6;" +
+                "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-font-size: 13;");
+        nameField.setPrefWidth(220);
+
+        Button renameBtn = new Button("Rename");
+        renameBtn.setStyle("-fx-background-color: #2E5A47; -fx-text-fill: white;" +
+                "-fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 6;" +
+                "-fx-cursor: hand; -fx-padding: 8 14;");
+        renameBtn.setOnAction(e -> renameSchema(nameField.getText().trim()));
+
+        HBox renameRow = new HBox(8, nameField, renameBtn);
+        renameRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox header = new VBox(10, topRow, titleText, renameRow);
+        header.setPadding(new Insets(16, 20, 16, 20));
+        header.setStyle("-fx-background-color: white; -fx-border-color: #E2E6EF; -fx-border-width: 0 0 1 0;");
+
+        tablesGrid.setPadding(new Insets(0));
+
+        VBox body = new VBox(tablesGrid);
+        body.setPadding(new Insets(20));
+
+        ScrollPane scroll = new ScrollPane(body);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background-color: #F4F5F9; -fx-background: #F4F5F9;");
+
+        setTop(header);
+        setCenter(scroll);
+
+        loadTableOrder();
+        rebuildTableList();
+    }
+
+    private void renameSchema(String newName) {
+        if (newName.isEmpty() || newName.equals(schemaName)) return;
+        try {
+            db.renameSchema(schemaName, newName);
+        } catch (Exception ex) {
+            SchemasAdd.warn("Could not rename schema: " + ex.getMessage());
+            return;
+        }
+        String orderVal = ORDER_PREFS.get(schemaName, null);
+        if (orderVal != null) {
+            ORDER_PREFS.put(newName, orderVal);
+            ORDER_PREFS.remove(schemaName);
+        }
+        schemaName = newName;
+        titleText.setText("Edit Schema — " + schemaName);
+        rebuildTableList();
+    }
+
+    private void confirmDeleteSchema() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Delete Schema");
+        dialog.setHeaderText(null);
+
+        ButtonType deleteButtonType = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(deleteButtonType, ButtonType.CANCEL);
+
+        Label warning = new Label("This will permanently delete '" + schemaName + "' and all its tables.");
+        Label instruction = new Label("Type '" + schemaName + "' to confirm:");
+        TextField input = new TextField();
+        VBox content = new VBox(10, warning, instruction, input);
+        content.setPadding(new Insets(12));
+        dialog.getDialogPane().setContent(content);
+
+        Node deleteButton = dialog.getDialogPane().lookupButton(deleteButtonType);
+        deleteButton.setDisable(true);
+        input.textProperty().addListener((obs, oldV, newV) ->
+                deleteButton.setDisable(!newV.equals(schemaName)));
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == deleteButtonType) {
+            db.deleteSchema(new Schema(schemaName));
+            ORDER_PREFS.remove(schemaName);
+            onDone.run();
+        }
+    }
+
+    private void loadTableOrder() {
+        tableOrder.clear();
+        String saved = ORDER_PREFS.get(schemaName, null);
+        if (saved != null && !saved.isEmpty()) {
+            tableOrder.addAll(Arrays.asList(saved.split("\\|")));
+        }
+    }
+
+    private void saveTableOrder() {
+        ORDER_PREFS.put(schemaName, String.join("|", tableOrder));
+    }
+
+    private void rebuildTableList() {
+        root.setSelectedSchema(schemaName, false);
+        tablesGrid.getChildren().clear();
+        Schema full = root.getTablesFor(schemaName, false);
+        List<Table> tables = new ArrayList<>(full.getTables());
+
+        List<String> liveNames = tables.stream().map(Table::getName).toList();
+        tableOrder.retainAll(liveNames);
+        for (String name : liveNames) {
+            if (!tableOrder.contains(name)) tableOrder.add(name);
+        }
+        saveTableOrder();
+
+        tables.sort(Comparator.comparingInt(t -> tableOrder.indexOf(t.getName())));
+
+        for (Table table : tables) {
+            VBox card = root.buildCard(
+                    table,
+                    this,
+                    () -> appRoot.setCenter(root),
+                    this::rebuildTableList
+            );
+            tablesGrid.getChildren().add(card);
+        }
+    }
+
+    private void addNewTable() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("New Table");
+        dialog.setHeaderText(null);
+        dialog.setContentText("Table name:");
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(name -> {
+            String trimmed = name.trim();
+            if (trimmed.isEmpty()) return;
+            Table blank = new Table(trimmed);
+            blank.addField(new Field(null, true, "INT", "id"));
+            db.CreateTable(schemaName, blank);
+            tableOrder.add(trimmed);
+            saveTableOrder();
+            rebuildTableList();
+        });
+    }
 }

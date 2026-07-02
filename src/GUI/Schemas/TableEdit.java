@@ -8,6 +8,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -22,6 +23,7 @@ public class TableEdit extends VBox {
 
     private final SchemasRoot root;
     private final String schemaName;
+    private final BorderPane hostPane;
     private final String originalTableName;
 
     private final TextField tableNameField;
@@ -32,7 +34,12 @@ public class TableEdit extends VBox {
     final ObservableList<String> availablePKs = FXCollections.observableArrayList();
 
     public TableEdit(SchemasRoot root, String schemaName, Table table, List<String> schemaPKList) {
+        this(root, root, schemaName, table, schemaPKList);
+    }
+
+    public TableEdit(SchemasRoot root, BorderPane hostPane, String schemaName, Table table, List<String> schemaPKList) {
         this.root = root;
+        this.hostPane = hostPane;
         this.schemaName = schemaName;
         this.originalTableName = table.getName();
 
@@ -48,7 +55,9 @@ public class TableEdit extends VBox {
         backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6E9BFF;" +
                 "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 11;" +
                 "-fx-border-color: transparent; -fx-padding: 0;");
-        backBtn.setOnAction(e -> root.createTables());
+        backBtn.setOnAction(e -> {
+            hostPane.setRight(null);
+        });
 
         Text title = new Text("Edit Table — " + table.getName());
         title.setFont(Font.font("System", FontWeight.BOLD, 15));
