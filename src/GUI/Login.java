@@ -1,20 +1,16 @@
 package GUI;
 
 import globalfuncs.creds;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.ParallelTransition;
+import javafx.animation.TranslateTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.*;
 import javafx.scene.effect.BoxBlur;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
@@ -23,6 +19,8 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import javafx.util.Duration;
+
 import java.util.Optional;
 
 public class Login extends HBox {
@@ -34,6 +32,22 @@ public class Login extends HBox {
     private TextField passField;
     private TextField initialsField;
     private CheckBox rememberMeCheck;
+
+    // ── Account auth state ───────────────────────────────────────────
+    private TextField accountEmailField;
+    private PasswordField accountPasswordField;
+    private PasswordField accountConfirmField;
+    private VBox confirmGroup;
+    private Text accountError;
+    private Button accountSubmitBtn;
+    private Hyperlink switchModeLink;
+    private boolean signUpMode = false;
+
+    private StackPane formStack;
+    private VBox accountPane;
+    private VBox mysqlPane;
+
+    private static final double FLY_DISTANCE = 900; // comfortably larger than any realistic window height
 
     public Login(Stage stage) {
         stage.setWidth(1700);
@@ -82,25 +96,201 @@ public class Login extends HBox {
 
         labelHolder.getChildren().add(logoTxt);
 
-        Rectangle clip = new Rectangle();
-        clip.widthProperty().bind(circleLayer.widthProperty().add(20));
-        clip.heightProperty().bind(circleLayer.heightProperty());
-        clip.setTranslateX(-40);
-        clip.setArcHeight(80);
-        clip.setArcWidth(80);
-        circleLayer.setClip(clip);
+        Rectangle circleClip = new Rectangle();
+        circleClip.widthProperty().bind(circleLayer.widthProperty().add(20));
+        circleClip.heightProperty().bind(circleLayer.heightProperty());
+        circleClip.setTranslateX(-40);
+        circleClip.setArcHeight(80);
+        circleClip.setArcWidth(80);
+        circleLayer.setClip(circleClip);
 
         circleLayer.getChildren().addAll(c1, c2, c3, c4, labelHolder);
         HBox.setHgrow(circleLayer, Priority.ALWAYS);
 
         //right
-        VBox rightSide = new VBox(20);
+        VBox rightSide = new VBox();
         rightSide.setAlignment(Pos.CENTER);
         rightSide.setPadding(new Insets(60, 50, 60, 50));
-
         rightSide.setMinWidth(0);
         rightSide.setMinHeight(0);
         HBox.setHgrow(rightSide, Priority.ALWAYS);
+
+        accountPane = buildAccountPane();
+        mysqlPane   = buildMysqlPane();
+
+        // mysqlPane starts below the fold, waiting to fly in; accountPane starts in place
+        mysqlPane.setTranslateY(FLY_DISTANCE);
+        mysqlPane.setOpacity(0);
+        mysqlPane.setMouseTransparent(true);
+
+        formStack = new StackPane(mysqlPane, accountPane); // mysql behind, account on top initially
+        formStack.setAlignment(Pos.CENTER);
+
+        Rectangle stackClip = new Rectangle();
+        stackClip.widthProperty().bind(formStack.widthProperty());
+        stackClip.heightProperty().bind(formStack.heightProperty());
+        formStack.setClip(stackClip);
+
+        VBox.setVgrow(formStack, Priority.ALWAYS);
+        rightSide.getChildren().add(formStack);
+
+        this.setMinWidth(0);
+        this.setMinHeight(0);
+        this.getChildren().addAll(circleLayer, rightSide);
+
+        this.widthProperty().addListener((obs, oldVal, newVal) -> {
+            double half = newVal.doubleValue() / 2.0;
+            circleLayer.setPrefWidth(half);
+            circleLayer.setMaxWidth(half);
+            rightSide.setPrefWidth(half);
+            rightSide.setMaxWidth(half);
+        });
+    }
+
+    // ── Account sign in / sign up pane ───────────────────────────────
+    private VBox buildAccountPane() {
+        Text title = new Text("Sign in to your account");
+        title.setFont(Font.font("System", FontWeight.BOLD, 20));
+        title.setFill(Color.web("#1a1a1a"));
+
+        VBox emailGroup = createFieldGroup("Email", "you@example.com", false);
+        accountEmailField = (TextField) emailGroup.getChildren().get(1);
+
+        VBox passwordGroup = createFieldGroup("Password", "Password", true);
+        accountPasswordField = (PasswordField) passwordGroup.getChildren().get(1);
+
+        confirmGroup = createFieldGroup("Confirm Password", "Confirm password", true);
+        accountConfirmField = (PasswordField) confirmGroup.getChildren().get(1);
+        confirmGroup.setVisible(false);
+        confirmGroup.setManaged(false);
+
+        accountError = new Text();
+        accountError.setFont(Font.font("System", 12));
+        accountError.setFill(Color.web("#c0392b"));
+        accountError.setWrappingWidth(300);
+
+        accountSubmitBtn = new Button("Sign In");
+        accountSubmitBtn.setPrefWidth(160);
+        styleAsPrimary(accountSubmitBtn);
+        accountSubmitBtn.setOnAction(e -> handleAccountSubmit());
+
+        accountPasswordField.setOnAction(e -> accountSubmitBtn.fire());
+        accountConfirmField.setOnAction(e -> accountSubmitBtn.fire());
+
+        HBox btnRow = new HBox(accountSubmitBtn);
+        btnRow.setAlignment(Pos.CENTER);
+        btnRow.setMaxWidth(300);
+
+        switchModeLink = new Hyperlink("Need an account? Sign Up");
+        switchModeLink.setFont(Font.font("System", 12));
+        switchModeLink.setOnAction(e -> toggleAuthMode());
+
+        HBox linkRow = new HBox(switchModeLink);
+        linkRow.setAlignment(Pos.CENTER);
+        linkRow.setMaxWidth(300);
+
+        VBox pane = new VBox(18, title, emailGroup, passwordGroup, confirmGroup, accountError, btnRow, linkRow);
+        pane.setAlignment(Pos.CENTER);
+        pane.setMaxWidth(300);
+        return pane;
+    }
+
+    private void toggleAuthMode() {
+        signUpMode = !signUpMode;
+        accountError.setText("");
+        confirmGroup.setVisible(signUpMode);
+        confirmGroup.setManaged(signUpMode);
+        accountSubmitBtn.setText(signUpMode ? "Create Account" : "Sign In");
+        switchModeLink.setText(signUpMode
+                ? "Already have an account? Sign In"
+                : "Need an account? Sign Up");
+    }
+
+    private void handleAccountSubmit() {
+        String email = accountEmailField.getText().trim();
+        String password = accountPasswordField.getText();
+
+        if (email.isEmpty() || password.isEmpty()) {
+            accountError.setText("Please fill in all fields.");
+            return;
+        }
+        if (signUpMode && !password.equals(accountConfirmField.getText())) {
+            accountError.setText("Passwords do not match.");
+            return;
+        }
+
+        accountSubmitBtn.setDisable(true);
+        accountError.setText("");
+
+        // ─────────────────────────────────────────────────────────────
+        // TODO: replace this stub with a real call to your licensing
+        // backend once it exists (e.g. Supabase auth + subscription check).
+        // Suggested shape:
+        //
+        //   AuthClient.authenticate(email, password, signUpMode)
+        //       .thenAccept(result -> Platform.runLater(() -> {
+        //           accountSubmitBtn.setDisable(false);
+        //           if (result.success()) {
+        //               LicenseStore.save(result.token(), result.expiresAt());
+        //               playFormTransition();
+        //           } else {
+        //               accountError.setText(result.message());
+        //           }
+        //       }));
+        //
+        // For now, every attempt succeeds so the UI/animation can be tested.
+        boolean success = true;
+        // ─────────────────────────────────────────────────────────────
+
+        if (success) {
+            accountSubmitBtn.setDisable(false);
+            playFormTransition();
+        } else {
+            accountSubmitBtn.setDisable(false);
+            accountError.setText("Invalid email or password.");
+        }
+    }
+
+    private void playFormTransition() {
+        accountPane.setMouseTransparent(true);
+        mysqlPane.setMouseTransparent(false);
+
+        double flyDistance = formStack.getHeight() > 0 ? formStack.getHeight() + 60 : FLY_DISTANCE;
+
+        // Pronounced ease-in-out — steeper than EASE_BOTH's gentle default curve
+        Interpolator strongEase = Interpolator.SPLINE(0.65, 0, 0.35, 1);
+
+        TranslateTransition accountUp = new TranslateTransition(Duration.millis(750), accountPane);
+        accountUp.setToY(-flyDistance);
+        accountUp.setInterpolator(strongEase);
+
+        FadeTransition accountFade = new FadeTransition(Duration.millis(750), accountPane);
+        accountFade.setToValue(0);
+        accountFade.setInterpolator(strongEase);
+
+        TranslateTransition mysqlIn = new TranslateTransition(Duration.millis(750), mysqlPane);
+        mysqlIn.setFromY(flyDistance);
+        mysqlIn.setToY(0);
+        mysqlIn.setInterpolator(strongEase);
+
+        // Fade finishes at 60% of the glide, so it's fully solid while still decelerating into place
+        FadeTransition mysqlFade = new FadeTransition(Duration.millis(450), mysqlPane);
+        mysqlFade.setToValue(1);
+        mysqlFade.setInterpolator(strongEase);
+
+        ParallelTransition transition = new ParallelTransition(accountUp, accountFade, mysqlIn, mysqlFade);
+        transition.setOnFinished(e -> {
+            accountPane.setVisible(false);
+            accountPane.setManaged(false);
+        });
+        transition.play();
+    }
+
+    // ── MySQL local connection pane (unchanged content, extracted) ──
+    private VBox buildMysqlPane() {
+        VBox rightSide = new VBox(20);
+        rightSide.setAlignment(Pos.CENTER);
+        rightSide.setMaxWidth(300);
 
         Text title = new Text("Login with local Credentials");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
@@ -171,15 +361,15 @@ public class Login extends HBox {
         profileRow.setAlignment(Pos.CENTER_LEFT);
         profileGroup.getChildren().addAll(profileLabel, profileRow);
 
-        VBox hostGroup = createFieldGroup("Host", "localhost");
+        VBox hostGroup = createFieldGroup("Host", "localhost", false);
         hostField = (TextField) hostGroup.getChildren().get(1);
-        VBox portGroup = createFieldGroup("Port", "3306");
+        VBox portGroup = createFieldGroup("Port", "3306", false);
         portField = (TextField) portGroup.getChildren().get(1);
-        VBox nameGroup = createFieldGroup("MySQL Username", "Value");
+        VBox nameGroup = createFieldGroup("MySQL Username", "Value", false);
         nameField = (TextField) nameGroup.getChildren().get(1);
-        VBox passGroup = createFieldGroup("MySQL Password", "Value");
+        VBox passGroup = createFieldGroup("MySQL Password", "Value", false);
         passField = (TextField) passGroup.getChildren().get(1);
-        VBox initialsGroup = createFieldGroup("User Initials", "Value");
+        VBox initialsGroup = createFieldGroup("User Initials", "Value", false);
         initialsField = (TextField) initialsGroup.getChildren().get(1);
 
         rememberMeCheck = new CheckBox("Remember details for this profile");
@@ -198,7 +388,6 @@ public class Login extends HBox {
             String selectedProfile = profileComboBox.getValue();
             if (selectedProfile != null && !selectedProfile.isEmpty()) {
                 String[] details = creds.loadProfile(selectedProfile);
-                // details[0] is the stored jdbc URL — parse host and port back out
                 parseUrlIntoFields(details[0]);
                 nameField.setText(details[1]);
                 initialsField.setText(details[2]);
@@ -214,18 +403,7 @@ public class Login extends HBox {
         initialsField.setOnAction(e -> connectBtn.fire());
 
         connectBtn.setPrefWidth(160);
-        connectBtn.setStyle(
-                "-fx-background-color: #262626; -fx-text-fill: white; -fx-font-size: 13px;" +
-                        "-fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 40; -fx-cursor: hand;"
-        );
-        connectBtn.setOnMouseEntered(e -> connectBtn.setStyle(
-                "-fx-background-color: #404040; -fx-text-fill: white; -fx-font-size: 13px;" +
-                        "-fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 40; -fx-cursor: hand;"
-        ));
-        connectBtn.setOnMouseExited(e -> connectBtn.setStyle(
-                "-fx-background-color: #262626; -fx-text-fill: white; -fx-font-size: 13px;" +
-                        "-fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 40; -fx-cursor: hand;"
-        ));
+        styleAsPrimary(connectBtn);
 
         connectBtn.setOnAction(e -> {
             String host = hostField.getText().trim().isEmpty() ? "localhost" : hostField.getText().trim();
@@ -255,18 +433,22 @@ public class Login extends HBox {
         btnRow.setMaxWidth(300);
 
         rightSide.getChildren().addAll(title, profileGroup, hostGroup, portGroup, nameGroup, passGroup, initialsGroup, rememberMeCheck, btnRow);
+        return rightSide;
+    }
 
-        this.setMinWidth(0);
-        this.setMinHeight(0);
-        this.getChildren().addAll(circleLayer, rightSide);
-
-        this.widthProperty().addListener((obs, oldVal, newVal) -> {
-            double half = newVal.doubleValue() / 2.0;
-            circleLayer.setPrefWidth(half);
-            circleLayer.setMaxWidth(half);
-            rightSide.setPrefWidth(half);
-            rightSide.setMaxWidth(half);
-        });
+    private void styleAsPrimary(Button btn) {
+        btn.setStyle(
+                "-fx-background-color: #262626; -fx-text-fill: white; -fx-font-size: 13px;" +
+                        "-fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 40; -fx-cursor: hand;"
+        );
+        btn.setOnMouseEntered(e -> btn.setStyle(
+                "-fx-background-color: #404040; -fx-text-fill: white; -fx-font-size: 13px;" +
+                        "-fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 40; -fx-cursor: hand;"
+        ));
+        btn.setOnMouseExited(e -> btn.setStyle(
+                "-fx-background-color: #262626; -fx-text-fill: white; -fx-font-size: 13px;" +
+                        "-fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 40; -fx-cursor: hand;"
+        ));
     }
 
     private void parseUrlIntoFields(String storedUrl) {
@@ -277,7 +459,7 @@ public class Login extends HBox {
         }
         try {
             String stripped = storedUrl.replace("jdbc:mysql://", "");
-            String hostPort = stripped.split("/")[0]; // "localhost:3306"
+            String hostPort = stripped.split("/")[0];
             String[] parts = hostPort.split(":");
             hostField.setText(parts[0]);
             portField.setText(parts.length > 1 ? parts[1] : "3306");
@@ -302,8 +484,6 @@ public class Login extends HBox {
             parseUrlIntoFields(details[0]);
             nameField.setText(details[1]);
             initialsField.setText(details[2]);
-
-            javafx.application.Platform.runLater(() -> passField.requestFocus());
         } else {
             profileComboBox.setValue("Default Profile");
         }
@@ -317,12 +497,12 @@ public class Login extends HBox {
         creds.Display();
     }
 
-    private VBox createFieldGroup(String labelText, String placeholder) {
+    private VBox createFieldGroup(String labelText, String placeholder, boolean masked) {
         Text label = new Text(labelText);
         label.setFont(Font.font("System", 13));
         label.setFill(Color.web("#1a1a1a"));
 
-        TextField field = new TextField();
+        TextField field = masked ? new PasswordField() : new TextField();
         field.setPromptText(placeholder);
         field.setMaxWidth(300);
         field.setPrefHeight(40);

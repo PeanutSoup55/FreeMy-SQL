@@ -27,6 +27,21 @@ public class SchemasRoot extends BorderPane {
     private String selectedSchemaName = "";
     private boolean isRemoteSelected = false;
     private static final java.util.prefs.Preferences PREFS = java.util.prefs.Preferences.userRoot().node("Free_My_SQL/table_positions");
+    private static final java.util.prefs.Preferences REMOTE_LINK_PREFS =
+            java.util.prefs.Preferences.userRoot().node("Free_My_SQL/remote_linked_schemas");
+
+    public static boolean isRemoteLinked(String schemaName) {
+        return REMOTE_LINK_PREFS.getBoolean(schemaName, false);
+    }
+
+    public static void markRemoteLinked(String schemaName) {
+        REMOTE_LINK_PREFS.putBoolean(schemaName, true);
+    }
+
+    public static void clearRemoteLink(String schemaName) {
+        REMOTE_LINK_PREFS.remove(schemaName);
+    }
+
     public static List<Schema> remoteSchemas = new ArrayList<>();
     private double scale = 1.0;
     private static final double SCALE_MIN = 0.3;

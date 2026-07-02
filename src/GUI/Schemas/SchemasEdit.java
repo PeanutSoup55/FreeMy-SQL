@@ -131,6 +131,10 @@ public class SchemasEdit extends BorderPane {
             ORDER_PREFS.put(newName, orderVal);
             ORDER_PREFS.remove(schemaName);
         }
+        if (SchemasRoot.isRemoteLinked(schemaName)) {   // NEW
+            SchemasRoot.markRemoteLinked(newName);
+            SchemasRoot.clearRemoteLink(schemaName);
+        }
         schemaName = newName;
         titleText.setText("Edit Schema — " + schemaName);
         rebuildTableList();
@@ -160,6 +164,7 @@ public class SchemasEdit extends BorderPane {
         if (result.isPresent() && result.get() == deleteButtonType) {
             db.deleteSchema(new Schema(schemaName));
             ORDER_PREFS.remove(schemaName);
+            SchemasRoot.clearRemoteLink(schemaName);   // NEW
             onDone.run();
         }
     }

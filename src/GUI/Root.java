@@ -648,8 +648,11 @@ public class Root extends BorderPane {
                         new Thread(() -> {
                             String result = db.CloneSchemaFromRemote(schema.getName());
                             Platform.runLater(() -> {
-                                schemasRoot.refreshData(); // CHANGED
-                                createSide();               // NEW
+                                if (result != null && !result.toLowerCase().contains("fail") && !result.toLowerCase().contains("error")) {
+                                    SchemasRoot.markRemoteLinked(schema.getName());
+                                }
+                                schemasRoot.refreshData();
+                                createSide();
                                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                                 alert.setTitle("Clone Complete");
                                 alert.setHeaderText(null);
@@ -661,12 +664,17 @@ public class Root extends BorderPane {
                     contextMenu.getItems().add(cloneItem);
 
                 } else {
-                    if (creds.hasRemote()) {
+                    if (creds.hasRemote() && SchemasRoot.isRemoteLinked(schema.getName())) {
                         MenuItem pushItem = new MenuItem("Push to Remote");
                         pushItem.setOnAction(event -> {
                             new Thread(() -> {
                                 String result = db.PushSchemaToRemote(schema.getName());
                                 Platform.runLater(() -> {
+                                    // TODO once push is fully implemented: mark linked on first successful push
+                                    // so schemas that started local-only also unlock this item going forward.
+                                    // if (result != null && !result.toLowerCase().contains("fail")) {
+                                    //     SchemasRoot.markRemoteLinked(schema.getName());
+                                    // }
                                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                                     alert.setTitle("Push to Remote");
                                     alert.setHeaderText(null);
@@ -760,8 +768,9 @@ public class Root extends BorderPane {
                             db.deleteSchema(schema);
                             ((Pane) wrapper.getParent()).getChildren().remove(wrapper);
                             schemaWrappers.remove(wrapper);
-                            schemasRoot.refreshData(); // CHANGED
-                            createSide();               // NEW
+                            SchemasRoot.clearRemoteLink(schema.getName());   // NEW
+                            schemasRoot.refreshData();
+                            createSide();
                         }
                     });
                     contextMenu.getItems().add(deleteItem);
