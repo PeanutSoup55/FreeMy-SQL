@@ -14,5 +14,6 @@
     <orderEntry type="library" name="poi-5.2.3" level="project" />
     <orderEntry type="library" name="poi-ooxml-5.2.3" level="project" />
     <orderEntry type="library" name="xmlbeans-5.1.1" level="project" />
+    <orderEntry type="library" name="google.code.gson" level="project" />
   </component>
 </module>
