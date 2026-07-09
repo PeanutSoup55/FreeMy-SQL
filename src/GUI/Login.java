@@ -9,15 +9,14 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.effect.BoxBlur;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -60,52 +59,39 @@ public class Login extends HBox {
     public void createLoginPage() {
 
         //left
-        Pane circleLayer = new Pane();
-        circleLayer.setMinWidth(0);
-        circleLayer.setMinHeight(0);
+        Pane artLayer = new Pane();
+        artLayer.setMinWidth(0);
+        artLayer.setMinHeight(0);
 
-        Circle c1 = new Circle(900, Color.web("#7dbba3"));
-        Circle c2 = new Circle(450, Color.web("#3e8e75"));
-        Circle c3 = new Circle(350, Color.web("#1a3a31"));
-        Circle c4 = new Circle(250, Color.web("#091413"));
+        Image waveImage = new Image(getClass().getResourceAsStream("/assets/wave.png"));
+        ImageView waveView = new ImageView(waveImage);
+        waveView.setPreserveRatio(false);
+        waveView.setSmooth(true);
+        waveView.fitWidthProperty().bind(artLayer.widthProperty());
+        waveView.fitHeightProperty().bind(artLayer.heightProperty());
 
-        BoxBlur blur = new BoxBlur(40, 40, 3);
-        c1.setEffect(blur);
-        c2.setEffect(blur);
-        c3.setEffect(blur);
-        c4.setEffect(blur);
+        Image logoImage = new Image(getClass().getResourceAsStream("/assets/logo.png"));
+        ImageView logoView = new ImageView(logoImage);
+        logoView.setPreserveRatio(true);
+        logoView.setSmooth(true);
+        logoView.setFitWidth(300);
 
-        double offset = 100;
+        StackPane logoHolder = new StackPane(logoView);
+        logoHolder.setPickOnBounds(false);
+        logoHolder.layoutXProperty().bind(artLayer.widthProperty().divide(2).subtract(70));
+        logoHolder.layoutYProperty().bind(artLayer.heightProperty().divide(2).subtract(70));
+        logoHolder.setPrefSize(140, 140);
 
-        for (Circle c : new Circle[]{c1, c2, c3, c4}) {
-            c.centerXProperty().bind(circleLayer.widthProperty().divide(2).add(offset));
-            c.centerYProperty().bind(circleLayer.heightProperty().divide(2));
-        }
+        Rectangle artClip = new Rectangle();
+        artClip.widthProperty().bind(artLayer.widthProperty().add(20));
+        artClip.heightProperty().bind(artLayer.heightProperty());
+        artClip.setTranslateX(-40);
+        artClip.setArcHeight(80);
+        artClip.setArcWidth(80);
+        artLayer.setClip(artClip);
 
-        StackPane labelHolder = new StackPane();
-        labelHolder.setPickOnBounds(false);
-        labelHolder.layoutXProperty().bind(circleLayer.widthProperty().divide(2).add(offset).subtract(150));
-        labelHolder.layoutYProperty().bind(circleLayer.heightProperty().divide(2).subtract(50));
-        labelHolder.setPrefSize(300, 100);
-
-        Text logoTxt = new Text("Free My\nSQL");
-        logoTxt.setFont(Font.font("System", FontWeight.BOLD, 40));
-        logoTxt.setFill(Color.WHITE);
-        logoTxt.setTextAlignment(TextAlignment.CENTER);
-        StackPane.setAlignment(logoTxt, Pos.CENTER);
-
-        labelHolder.getChildren().add(logoTxt);
-
-        Rectangle circleClip = new Rectangle();
-        circleClip.widthProperty().bind(circleLayer.widthProperty().add(20));
-        circleClip.heightProperty().bind(circleLayer.heightProperty());
-        circleClip.setTranslateX(-40);
-        circleClip.setArcHeight(80);
-        circleClip.setArcWidth(80);
-        circleLayer.setClip(circleClip);
-
-        circleLayer.getChildren().addAll(c1, c2, c3, c4, labelHolder);
-        HBox.setHgrow(circleLayer, Priority.ALWAYS);
+        artLayer.getChildren().addAll(waveView, logoHolder);
+        HBox.setHgrow(artLayer, Priority.ALWAYS);
 
         //right
         VBox rightSide = new VBox();
@@ -136,12 +122,12 @@ public class Login extends HBox {
 
         this.setMinWidth(0);
         this.setMinHeight(0);
-        this.getChildren().addAll(circleLayer, rightSide);
+        this.getChildren().addAll(artLayer, rightSide);
 
         this.widthProperty().addListener((obs, oldVal, newVal) -> {
             double half = newVal.doubleValue() / 2.0;
-            circleLayer.setPrefWidth(half);
-            circleLayer.setMaxWidth(half);
+            artLayer.setPrefWidth(half);
+            artLayer.setMaxWidth(half);
             rightSide.setPrefWidth(half);
             rightSide.setMaxWidth(half);
         });
