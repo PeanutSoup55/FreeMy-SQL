@@ -28,7 +28,7 @@ public class SSHConnection extends VBox {
     private static final String CARD      = "#FFFFFF";
     private static final String FIELD_BG  = "#F7F8FB";
     private static final String BORDER    = "#E1E5EC";
-    private static final String ACCENT    = "#3D6FE0";
+    private static final String ACCENT    = "#1C2333";
     private static final String ACCENT_BG = "#EAF0FD";
     private static final String TEXT      = "#1C2230";
     private static final String MUTED     = "#6B7280";

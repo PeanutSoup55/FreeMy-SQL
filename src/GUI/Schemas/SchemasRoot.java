@@ -385,7 +385,7 @@ public class SchemasRoot extends BorderPane {
 
         HBox header = new HBox(title, spacer, hamburger);
         header.setPadding(new Insets(8, 12, 8, 12));
-        header.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8 8 0 0;");
+        header.setStyle("-fx-background-color: #1C2333; -fx-background-radius: 8 8 0 0;");
         header.setAlignment(Pos.CENTER_LEFT);
         card.getChildren().add(header);
 

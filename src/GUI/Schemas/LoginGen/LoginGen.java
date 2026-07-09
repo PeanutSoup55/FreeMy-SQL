@@ -42,13 +42,13 @@ public class LoginGen extends VBox {
 
     private HBox buildHeader() {
         Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47;" +
+        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #1C2333;" +
                 "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 13;");
         backBtn.setOnAction(e -> root.createTables());
 
         Text title = new Text("Login Generator");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.web("#1E3D30"));
+        title.setFill(Color.web("#1C2333"));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -75,7 +75,7 @@ public class LoginGen extends VBox {
     private VBox buildConfig() {
         Label configTitle = new Label("Configuration");
         configTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
-        configTitle.setTextFill(Color.web("#1E3D30"));
+        configTitle.setTextFill(Color.web("#1C2333"));
 
         HBox topBar = new HBox(configTitle);
         topBar.setPadding(new Insets(14, 16, 10, 16));
@@ -136,7 +136,7 @@ public class LoginGen extends VBox {
     private VBox buildOutput() {
         Label outputTitle = new Label("Generated Code");
         outputTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
-        outputTitle.setTextFill(Color.web("#1E3D30"));
+        outputTitle.setTextFill(Color.web("#1C2333"));
 
         Button copyBtn = outlineBtn("⎘  Copy");
 
@@ -482,7 +482,7 @@ public class LoginGen extends VBox {
         ComboBox<String> cb = new ComboBox<>();
         cb.getItems().addAll(items);
         cb.setMaxWidth(Double.MAX_VALUE);
-        cb.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8; -fx-cursor: hand;");
+        cb.setStyle("-fx-background-color: #1C2333; -fx-background-radius: 8; -fx-cursor: hand;");
         cb.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(String s, boolean empty) {
                 super.updateItem(s, empty);
@@ -497,13 +497,13 @@ public class LoginGen extends VBox {
     private static Label sectionLabel(String text) {
         Label l = new Label(text);
         l.setFont(Font.font("System", FontWeight.BOLD, 12));
-        l.setTextFill(Color.web("#1E3D30"));
+        l.setTextFill(Color.web("#1C2333"));
         return l;
     }
 
     private static Button filledBtn(String label) {
         Button b = new Button(label);
-        b.setStyle("-fx-background-color: #2E5A47; -fx-text-fill: white;" +
+        b.setStyle("-fx-background-color: #1C2333; -fx-text-fill: white;" +
                 "-fx-background-radius: 8; -fx-font-weight: bold;" +
                 "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
         return b;
@@ -511,8 +511,8 @@ public class LoginGen extends VBox {
 
     private static Button outlineBtn(String label) {
         Button b = new Button(label);
-        b.setStyle("-fx-background-color: white; -fx-text-fill: #2E5A47;" +
-                "-fx-border-color: #2E5A47; -fx-border-radius: 8;" +
+        b.setStyle("-fx-background-color: white; -fx-text-fill: #1C2333;" +
+                "-fx-border-color: #1C2333; -fx-border-radius: 8;" +
                 "-fx-background-radius: 8; -fx-font-weight: bold;" +
                 "-fx-cursor: hand; -fx-padding: 8 18; -fx-font-size: 12;");
         return b;

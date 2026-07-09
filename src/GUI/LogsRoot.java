@@ -24,7 +24,7 @@ public class LogsRoot extends BorderPane {
     private static final String CARD      = "#FFFFFF";
     private static final String FIELD_BG  = "#F7F8FB";
     private static final String BORDER    = "#E1E5EC";
-    private static final String ACCENT    = "#3D6FE0";
+    private static final String ACCENT    = "#1C2333";
     private static final String ACCENT_BG = "#EAF0FD";
     private static final String TEXT      = "#1C2230";
     private static final String MUTED     = "#6B7280";
@@ -203,7 +203,7 @@ public class LogsRoot extends BorderPane {
     private void styleTableHeaders() {
         table.getStylesheets().add("data:text/css," +
                 ".table-view .column-header-background {" +
-                "   -fx-background-color: %233D6FE0;" +
+                "   -fx-background-color: %231C2333;" +
                 "   -fx-background-radius: 10 10 0 0;" +
                 "}" +
                 ".table-view .column-header, .table-view .filler {" +
