@@ -60,21 +60,36 @@ public class Login extends HBox {
 
         //left
         Pane artLayer = new Pane();
+        artLayer.setStyle("-fx-background-color: white;");
         artLayer.setMinWidth(0);
         artLayer.setMinHeight(0);
 
-        Image waveImage = new Image(getClass().getResourceAsStream("/assets/wave.png"));
-        ImageView waveView = new ImageView(waveImage);
-        waveView.setPreserveRatio(false);
-        waveView.setSmooth(true);
-        waveView.fitWidthProperty().bind(artLayer.widthProperty());
-        waveView.fitHeightProperty().bind(artLayer.heightProperty());
+        Image waveImage = new Image(getClass().getResourceAsStream("/assets/wave3.png"));
+        double waveAspect = waveImage.getHeight() / waveImage.getWidth();
+        // displayed height of a wave image once its width is stretched to fill the panel
+        javafx.beans.binding.DoubleBinding waveDisplayedHeight =
+                artLayer.widthProperty().multiply(waveAspect);
+
+        // top copy — vertical center pinned to the top edge of the panel (y = 0)
+        ImageView waveTopView = new ImageView(waveImage);
+        waveTopView.setPreserveRatio(true);
+        waveTopView.setSmooth(true);
+        waveTopView.fitWidthProperty().bind(artLayer.widthProperty());
+        waveTopView.layoutYProperty().bind(waveDisplayedHeight.divide(-2));
+
+        // bottom copy — vertical center pinned to the bottom edge of the panel
+        ImageView waveBottomView = new ImageView(waveImage);
+        waveBottomView.setPreserveRatio(true);
+        waveBottomView.setSmooth(true);
+        waveBottomView.fitWidthProperty().bind(artLayer.widthProperty());
+        waveBottomView.layoutYProperty().bind(
+                artLayer.heightProperty().subtract(waveDisplayedHeight.divide(2)));
 
         Image logoImage = new Image(getClass().getResourceAsStream("/assets/logo.png"));
         ImageView logoView = new ImageView(logoImage);
         logoView.setPreserveRatio(true);
         logoView.setSmooth(true);
-        logoView.setFitWidth(300);
+        logoView.setFitWidth(140);
 
         StackPane logoHolder = new StackPane(logoView);
         logoHolder.setPickOnBounds(false);
@@ -90,7 +105,7 @@ public class Login extends HBox {
         artClip.setArcWidth(80);
         artLayer.setClip(artClip);
 
-        artLayer.getChildren().addAll(waveView, logoHolder);
+        artLayer.getChildren().addAll(waveTopView, waveBottomView, logoHolder);
         HBox.setHgrow(artLayer, Priority.ALWAYS);
 
         //right
