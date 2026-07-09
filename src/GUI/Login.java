@@ -89,13 +89,13 @@ public class Login extends HBox {
         ImageView logoView = new ImageView(logoImage);
         logoView.setPreserveRatio(true);
         logoView.setSmooth(true);
-        logoView.setFitWidth(140);
+        logoView.setFitWidth(300);
 
         StackPane logoHolder = new StackPane(logoView);
         logoHolder.setPickOnBounds(false);
-        logoHolder.layoutXProperty().bind(artLayer.widthProperty().divide(2).subtract(70));
-        logoHolder.layoutYProperty().bind(artLayer.heightProperty().divide(2).subtract(70));
-        logoHolder.setPrefSize(140, 140);
+        logoHolder.layoutXProperty().bind(artLayer.widthProperty().divide(2).subtract(150));
+        logoHolder.layoutYProperty().bind(artLayer.heightProperty().divide(2).subtract(150));
+        logoHolder.setPrefSize(300, 300);
 
         Rectangle artClip = new Rectangle();
         artClip.widthProperty().bind(artLayer.widthProperty().add(20));
