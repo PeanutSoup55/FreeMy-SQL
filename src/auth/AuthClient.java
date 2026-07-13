@@ -26,9 +26,8 @@ import java.util.concurrent.CompletableFuture;
  */
 public class AuthClient {
 
-    // TODO: fill in from Supabase Settings -> API
-    private static final String SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-    private static final String SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+    private static final String SUPABASE_URL = "https://gksjnbicrycggdwaasxc.supabase.co";
+    private static final String SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrc2puYmljcnljZ2dkd2Fhc3hjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTg1MTgsImV4cCI6MjA5ODU3NDUxOH0.LCWxrffBJSj_gOzNy8AN6UY7o7807l5DVw7-yXOGGUM";
 
     public record AuthResult(boolean success, String message, String accessToken,
                              String userId, boolean subscriptionActive, Instant expiresAt) {
@@ -79,6 +78,9 @@ public class AuthClient {
                         expiresAt = Instant.parse(subRow.get("current_period_end").getAsString());
                     }
                 }
+
+                LicenseStore.save(accessToken, userId, expiresAt);
+                if (active) LicenseStore.markVerifiedNow();
 
                 return new AuthResult(true, "OK", accessToken, userId, active, expiresAt);
 
