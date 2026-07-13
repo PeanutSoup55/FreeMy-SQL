@@ -19,6 +19,9 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.application.Platform;
+import auth.AuthClient;
+import auth.LicenseStore;
 
 import java.util.Optional;
 
@@ -223,33 +226,24 @@ public class Login extends HBox {
         accountSubmitBtn.setDisable(true);
         accountError.setText("");
 
-        // ─────────────────────────────────────────────────────────────
-        // TODO: replace this stub with a real call to your licensing
-        // backend once it exists (e.g. Supabase auth + subscription check).
-        // Suggested shape:
-        //
-        //   AuthClient.authenticate(email, password, signUpMode)
-        //       .thenAccept(result -> Platform.runLater(() -> {
-        //           accountSubmitBtn.setDisable(false);
-        //           if (result.success()) {
-        //               LicenseStore.save(result.token(), result.expiresAt());
-        //               playFormTransition();
-        //           } else {
-        //               accountError.setText(result.message());
-        //           }
-        //       }));
-        //
-        // For now, every attempt succeeds so the UI/animation can be tested.
-        boolean success = true;
-        // ─────────────────────────────────────────────────────────────
+        AuthClient.authenticate(email, password, signUpMode)
+                .thenAccept(result -> Platform.runLater(() -> {
+                    accountSubmitBtn.setDisable(false);
 
-        if (success) {
-            accountSubmitBtn.setDisable(false);
-            playFormTransition();
-        } else {
-            accountSubmitBtn.setDisable(false);
-            accountError.setText("Invalid email or password.");
-        }
+                    if (!result.success()) {
+                        accountError.setText(result.message());
+                        return;
+                    }
+
+                    if (!result.subscriptionActive()) {
+                        accountError.setText("Your account has no active subscription. Please subscribe to continue.");
+                        return;
+                    }
+
+                    LicenseStore.save(result.accessToken(), result.userId(), result.expiresAt());
+                    LicenseStore.markVerifiedNow();
+                    playFormTransition();
+                }));
     }
 
     private void playFormTransition() {
