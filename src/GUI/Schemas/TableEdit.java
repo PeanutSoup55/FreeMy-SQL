@@ -52,14 +52,15 @@ public class TableEdit extends VBox {
         setMaxWidth(400);
 
         Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6E9BFF;" +
-                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 11;" +
-                "-fx-border-color: transparent; -fx-padding: 0;");
+        backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
+                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
+                "-fx-background-radius: 8; -fx-padding: 8 16;" +
+                "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
         backBtn.setOnAction(e -> {
             hostPane.setRight(null);
         });
 
-        Text title = new Text("Edit Table — " + table.getName());
+        Text title = new Text("Edit Table: " + table.getName());
         title.setFont(Font.font("System", FontWeight.BOLD, 15));
         title.setFill(Color.web("#EDEFF4"));
         title.setWrappingWidth(370);

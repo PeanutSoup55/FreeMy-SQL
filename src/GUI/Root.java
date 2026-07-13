@@ -85,8 +85,7 @@ public class Root extends BorderPane {
         VBox schemaPanel = new VBox();
         schemaPanel.setPrefWidth(220);
         schemaPanel.setMinWidth(220);
-        schemaPanel.setStyle("-fx-background-color: #FFFFFF; " +
-                "-fx-border-color: #DEDEDE; -fx-border-width: 0 1 0 0;");
+        schemaPanel.setStyle("-fx-background-color: #1C2333; -fx-border-color: transparent;");
 
         if (schemasRoot == null) schemasRoot = new SchemasRoot();
         Node sidebar = buildSchemaTree();
@@ -302,15 +301,17 @@ public class Root extends BorderPane {
                         "-fx-border-width: 1;"
         );
         footer.setOnMouseEntered(e -> footer.setStyle(
-                "-fx-background-color: #F5F5F5;" +
-                        "-fx-background-radius: 0 0 10 10;" +
-                        "-fx-border-color: #EBEBEB transparent transparent transparent;" +
+                "-fx-background-color: #121723;" +
+                        "-fx-border-color: #2A3244 transparent transparent transparent;" +
+                        "-fx-background-radius: 5;" +
+                        "-fx-border-radius: 5;" +
                         "-fx-border-width: 1;"
         ));
         footer.setOnMouseExited(e -> footer.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                        "-fx-background-radius: 0 0 10 10;" +
-                        "-fx-border-color: #EBEBEB transparent transparent transparent;" +
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: #2A3244 transparent transparent transparent;" +
+                        "-fx-background-radius: 5;" +
+                        " -fx-border-radius: 5;" +
                         "-fx-border-width: 1;"
         ));
         footer.setOnMouseClicked(e -> setCenter(new SchemasAdd(schemasRoot))); // CHANGED: this -> schemasRoot
@@ -360,7 +361,7 @@ public class Root extends BorderPane {
                         "-fx-background-radius: 4;"
         );
         btn.setOnMouseEntered(e -> btn.setStyle(
-                "-fx-background-color: #EFEFEF;" +
+                "-fx-background-color: #121723;" +
                         "-fx-cursor: hand;" +
                         "-fx-padding: 4 6;" +
                         "-fx-background-radius: 4;"
@@ -444,7 +445,7 @@ public class Root extends BorderPane {
                     tableRow.setStyle("-fx-background-color: transparent;");
                     tableRow.setCursor(Cursor.HAND);
 
-                    tableRow.setOnMouseEntered(ev -> tableRow.setStyle("-fx-background-color: #252D3D;"));
+                    tableRow.setOnMouseEntered(ev -> tableRow.setStyle("-fx-background-color: #121723; -fx-background-radius: 5; -fx-border-radius: 5;"));
                     tableRow.setOnMouseExited(ev -> tableRow.setStyle("-fx-background-color: transparent;"));
 
                     ContextMenu tableMenu = new ContextMenu();
@@ -607,7 +608,7 @@ public class Root extends BorderPane {
 
         schemaRow.setOnMouseEntered(e -> {
             if (selectedTab != schemaRow)
-                schemaRow.setStyle("-fx-background-color: #EEF1F4;");
+                schemaRow.setStyle("-fx-background-color: #121723; -fx-background-radius: 5; -fx-border-radius: 5;");
         });
         schemaRow.setOnMouseExited(e -> {
             if (selectedTab != schemaRow)
@@ -791,7 +792,7 @@ public class Root extends BorderPane {
 
     // ── Style helpers ──────────────────────────────────────────────────
     private void applySelectedStyle(HBox row, Label label) {
-        row.setStyle("-fx-background-color: #2E7D5E;");
+        row.setStyle("-fx-background-color: #080C14; -fx-background-radius: 5; -fx-border-radius: 5;");
         label.setStyle("-fx-text-fill: #FFFFFF; -fx-font-weight: bold;");
     }
 
