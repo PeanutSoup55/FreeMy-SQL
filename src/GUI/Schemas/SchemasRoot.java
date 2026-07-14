@@ -600,11 +600,11 @@ public class SchemasRoot extends BorderPane {
             cp1x=r[0]; cp1y=r[1]; cp2x=r[2]; cp2y=r[3];
 
             CubicCurve curve = new CubicCurve(sx,sy,cp1x,cp1y,cp2x,cp2y,ex,ey);
-            curve.setStroke(Color.web("#2E5A47"));
+            curve.setStroke(Color.web("#1C2333"));
             curve.setStrokeWidth(1.8);
             curve.setFill(Color.TRANSPARENT);
 
-            Circle dot = new Circle(sx, sy, 4.5, Color.web("#2E5A47"));
+            Circle dot = new Circle(sx, sy, 4.5, Color.web("#1C2333"));
             dot.setStroke(Color.WHITE);
             dot.setStrokeWidth(1.2);
 
@@ -625,11 +625,11 @@ public class SchemasRoot extends BorderPane {
                 sx + bulge, sy - 20,
                 ex + bulge, ey + 20,
                 ex, ey);
-        loop.setStroke(Color.web("#2E5A47"));
+        loop.setStroke(Color.web("#1C2333"));
         loop.setStrokeWidth(1.6);
         loop.setFill(Color.TRANSPARENT);
 
-        Circle dot = new Circle(sx, sy, 4, Color.web("#2E5A47"));
+        Circle dot = new Circle(sx, sy, 4, Color.web("#1C2333"));
         double angle = Math.atan2(ey - (ey + 20), ex - (ex + bulge));
         overlay.getChildren().addAll(loop, dot, buildArrow(ex, ey, angle));
     }
@@ -788,7 +788,7 @@ public class SchemasRoot extends BorderPane {
                 tipX,        tipY,
                 bx + wx,     by + wy,
                 bx - wx,     by - wy);
-        arrow.setFill(Color.web("#2E5A47"));
+        arrow.setFill(Color.web("#1C2333"));
         return arrow;
     }
 

@@ -21,6 +21,7 @@ public class LoginGen extends VBox {
     private final SchemasRoot root;
     private final String schemaName;
     private final Table table;
+    private final Runnable onDone;
 
     private ComboBox<String> identifierBox;
     private ComboBox<String> passwordBox;
@@ -28,10 +29,11 @@ public class LoginGen extends VBox {
     private TextArea bcryptArea;
     private TabPane tabPane;
 
-    public LoginGen(SchemasRoot root, String schemaName, Table table) {
+    public LoginGen(SchemasRoot root, String schemaName, Table table, Runnable onDone) {
         this.root = root;
         this.schemaName = schemaName;
         this.table = table;
+        this.onDone = onDone;
 
         setSpacing(0);
         setStyle("-fx-background-color: #F2F4F2;");
@@ -40,25 +42,38 @@ public class LoginGen extends VBox {
     }
 
 
-    private HBox buildHeader() {
+    private BorderPane buildHeader() {
         Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #1C2333;" +
-                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 13;");
-        backBtn.setOnAction(e -> root.createTables());
+        backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
+                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
+                "-fx-background-radius: 8; -fx-padding: 8 16;" +
+                "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+        backBtn.setOnAction(e -> onDone.run());
 
         Text title = new Text("Login Generator");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.web("#1C2333"));
+        title.setFill(Color.WHITE);
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox leftBox = new HBox(backBtn);
+        leftBox.setAlignment(Pos.CENTER_LEFT);
 
-        HBox header = new HBox(14, backBtn, title, spacer);
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(18, 24, 14, 24));
-        header.setStyle("-fx-background-color: transparent;" +
-                "-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
-        return header;
+        HBox centerBox = new HBox(title);
+        centerBox.setAlignment(Pos.CENTER);
+
+        // Mirrors leftBox's width so centerBox stays visually centered on the full bar
+        HBox rightSpacer = new HBox();
+        rightSpacer.setMinWidth(Region.USE_PREF_SIZE);
+        rightSpacer.prefWidthProperty().bind(leftBox.widthProperty());
+
+        BorderPane topBar = new BorderPane();
+        topBar.setPadding(new Insets(18, 24, 18, 24));
+        topBar.setStyle("-fx-background-color: #1C2333;" +
+                "-fx-border-color: #1C2333; -fx-border-width: 0 0 1 0;");
+        topBar.setLeft(leftBox);
+        topBar.setCenter(centerBox);
+        topBar.setRight(rightSpacer);
+
+        return topBar;
     }
 
 
@@ -143,10 +158,10 @@ public class LoginGen extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox topBar = new HBox(10, outputTitle, spacer, copyBtn);
-        topBar.setAlignment(Pos.CENTER_LEFT);
-        topBar.setPadding(new Insets(10, 16, 10, 16));
-        topBar.setStyle("-fx-background-color: white;" +
+        HBox outputTopBar = new HBox(10, outputTitle, spacer, copyBtn);
+        outputTopBar.setAlignment(Pos.CENTER_LEFT);
+        outputTopBar.setPadding(new Insets(10, 16, 10, 16));
+        outputTopBar.setStyle("-fx-background-color: white;" +
                 "-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
 
         Font monoFont = Font.font("Courier New", 12);
@@ -233,7 +248,7 @@ public class LoginGen extends VBox {
             Clipboard.getSystemClipboard().setContent(cc);
         });
 
-        VBox panel = new VBox(0, topBar, tabPane);
+        VBox panel = new VBox(0, outputTopBar, tabPane);
         VBox.setVgrow(panel, Priority.ALWAYS);
         panel.setStyle("-fx-background-color: #1E1E2E;");
         return panel;

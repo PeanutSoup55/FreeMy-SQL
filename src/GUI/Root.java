@@ -62,14 +62,14 @@ public class Root extends BorderPane {
         rail.setPrefWidth(52);
         rail.setMinWidth(52);
         rail.setMaxWidth(52);
-        rail.setStyle("-fx-background-color: #2E5A47;");
+        rail.setStyle("-fx-background-color: #080C14;");
 
         // Avatar at top
         Text initialLabel = new Text(creds.getInitials());
         initialLabel.setStyle("-fx-font-weight: bold; -fx-fill: white; -fx-font-size: 14;");
         Rectangle rec = new Rectangle(36, 36);
         rec.setArcWidth(8); rec.setArcHeight(8);
-        rec.setFill(Color.web("#1d3d30"));
+        rec.setFill(Color.web("#000000"));
         StackPane avatar = new StackPane(rec, initialLabel);
         avatar.setPadding(new Insets(10, 0, 10, 0));
         HBox avatarRow = new HBox(avatar);
@@ -209,7 +209,12 @@ public class Root extends BorderPane {
         HBox.setHgrow(tbSpacer, Priority.ALWAYS);
 
         Button newBtn = makeToolBtn("/assets/add.png", "New schema");
-        newBtn.setOnAction(e -> setCenter(new SchemasAdd(schemasRoot))); // CHANGED: this -> schemasRoot
+        newBtn.setOnAction(e -> setCenter(new SchemasAdd(schemasRoot, () -> {
+            schemasRoot.refreshData();
+            schemasRoot.createTables();
+            createSide();
+            setCenter(schemasRoot);
+        })));
 
         toolbar.getChildren().addAll(refreshBtn, collapseBtn, sortBtn, tbSpacer, newBtn);
 
@@ -314,7 +319,12 @@ public class Root extends BorderPane {
                         " -fx-border-radius: 5;" +
                         "-fx-border-width: 1;"
         ));
-        footer.setOnMouseClicked(e -> setCenter(new SchemasAdd(schemasRoot))); // CHANGED: this -> schemasRoot
+        footer.setOnMouseClicked(e -> setCenter(new SchemasAdd(schemasRoot, () -> {
+            schemasRoot.refreshData();
+            schemasRoot.createTables();
+            createSide();
+            setCenter(schemasRoot);
+        })));
 
         ImageView footerIcon = new ImageView(new Image(getClass().getResourceAsStream("/assets/add.png")));
         footerIcon.setFitWidth(13);
@@ -700,8 +710,11 @@ public class Root extends BorderPane {
                             applySelectedStyle(schemaRow, nameLabel);
                             selectedTab = schemaRow;
                             isRemoteSelected = false;
-                            schemasRoot.setSelectedSchema(schema.getName(), false); // NEW
-                            setCenter(new LoginGen(schemasRoot, schema.getName(), t)); // CHANGED: this -> schemasRoot
+                            schemasRoot.setSelectedSchema(schema.getName(), false);
+                            setCenter(new LoginGen(schemasRoot, schema.getName(), t, () -> {
+                                schemasRoot.createTables();
+                                setCenter(schemasRoot);
+                            }));
                         });
                         generateLoginMenu.getItems().add(tableOption);
                     }

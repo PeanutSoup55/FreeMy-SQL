@@ -19,11 +19,14 @@ import javafx.scene.text.Text;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SchemasAdd extends VBox {
+public class SchemasAdd extends BorderPane {
 
     private final SchemasRoot root;
+    private final Runnable onDone;
     private final TextField   schemaNameField;
     private final VBox        tablesContainer;
+    private final Label       tableCountLabel;
+    private final Button      saveBtn;
     private final List<TableEntry> tableEntries = new ArrayList<>();
     final ObservableList<String> availablePKs = FXCollections.observableArrayList();
 
@@ -36,62 +39,120 @@ public class SchemasAdd extends VBox {
             "FLOAT", "DOUBLE", "DECIMAL(10,2)"
     );
 
-    public SchemasAdd(SchemasRoot root) {
+    public SchemasAdd(SchemasRoot root, Runnable onDone) {
         this.root = root;
-        setSpacing(20);
-        setPadding(new Insets(28, 32, 28, 32));
+        this.onDone = onDone;
+
         setStyle("-fx-background-color: #F4F5F9;");
 
-        // Header row
+        // ── Header: dark topbar, matches SchemasEdit / LoginGen ────────
         Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #2E5A47;" +
-                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 13;" +
-                "-fx-border-color: transparent;");
-        backBtn.setOnAction(e -> root.createTables());
+        backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
+                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
+                "-fx-background-radius: 8; -fx-padding: 8 16;" +
+                "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+        backBtn.setOnAction(e -> onDone.run());
 
         Text title = new Text("Create New Schema");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.web("#1E3D30"));
+        title.setFill(Color.WHITE);
 
-        HBox header = new HBox(14, backBtn, title);
-        header.setAlignment(Pos.CENTER_LEFT);
+        HBox leftBox = new HBox(backBtn);
+        leftBox.setAlignment(Pos.CENTER_LEFT);
+
+        HBox centerBox = new HBox(title);
+        centerBox.setAlignment(Pos.CENTER);
+
+        HBox rightSpacer = new HBox();
+        rightSpacer.prefWidthProperty().bind(leftBox.widthProperty());
+
+        BorderPane topBar = new BorderPane();
+        topBar.setPadding(new Insets(18, 24, 18, 24));
+        topBar.setStyle("-fx-background-color: #1C2333;" +
+                "-fx-border-color: #1C2333; -fx-border-width: 0 0 1 0;");
+        topBar.setLeft(leftBox);
+        topBar.setCenter(centerBox);
+        topBar.setRight(rightSpacer);
+
+        // ── Schema name row ──────────────────────────────────────────
+        Label nameLabel = new Label("Schema Name");
+        nameLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        nameLabel.setTextFill(Color.web("#1C2333"));
 
         schemaNameField = new TextField();
-        schemaNameField.setPromptText("Schema Name...");
+        schemaNameField.setPromptText("e.g. inventory_db");
         schemaNameField.setMaxWidth(380);
         schemaNameField.setStyle(fieldStyle());
-        tablesContainer = new VBox(16);
-        tablesContainer.setPadding(new Insets(0, 0, 4, 0));
 
-        ScrollPane scroll = new ScrollPane(tablesContainer);
-        scroll.setFitToWidth(true);
-        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
-        VBox.setVgrow(scroll, Priority.ALWAYS);
+        VBox nameSection = new VBox(6, nameLabel, schemaNameField);
+        nameSection.setPadding(new Insets(18, 24, 18, 24));
+        nameSection.setStyle("-fx-background-color: white; -fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
+
+        VBox header = new VBox(0, topBar, nameSection);
+
+        // ── Tables section ───────────────────────────────────────────
+        tableCountLabel = new Label();
+        tableCountLabel.setFont(Font.font("System", FontWeight.BOLD, 13));
+        tableCountLabel.setTextFill(Color.web("#5A6472"));
 
         Button addTableBtn = outlineBtn("+ Add Table");
         addTableBtn.setOnAction(e -> addTableEntry());
 
-        Button saveBtn = filledBtn("Save Schema");
+        Region tablesSpacer = new Region();
+        HBox.setHgrow(tablesSpacer, Priority.ALWAYS);
+
+        HBox tablesToolbar = new HBox(10, tableCountLabel, tablesSpacer, addTableBtn);
+        tablesToolbar.setAlignment(Pos.CENTER_LEFT);
+        tablesToolbar.setPadding(new Insets(20, 24, 10, 24));
+
+        tablesContainer = new VBox(16);
+        tablesContainer.setPadding(new Insets(0, 24, 24, 24));
+
+        VBox body = new VBox(0, tablesToolbar, tablesContainer);
+
+        ScrollPane scroll = new ScrollPane(body);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;" +
+                "-fx-border-color: transparent;");
+
+        // ── Bottom save bar ──────────────────────────────────────────
+        saveBtn = filledBtn("Save Schema");
         saveBtn.setOnAction(e -> saveSchema());
+        saveBtn.setDisable(true);
+        schemaNameField.textProperty().addListener((obs, o, n) ->
+                saveBtn.setDisable(n.trim().isEmpty()));
 
-        HBox bottomRow = new HBox(12, addTableBtn, saveBtn);
-        bottomRow.setAlignment(Pos.CENTER_LEFT);
+        HBox saveBar = new HBox(saveBtn);
+        saveBar.setAlignment(Pos.CENTER_RIGHT);
+        saveBar.setPadding(new Insets(14, 24, 14, 24));
+        saveBar.setStyle("-fx-background-color: white; -fx-border-color: #EEEEEE; -fx-border-width: 1 0 0 0;");
 
-        getChildren().addAll(header, schemaNameField, scroll, bottomRow);
+        setTop(header);
+        setCenter(scroll);
+        setBottom(saveBar);
+
         addTableEntry();
+        refreshTableCount();
     }
 
     private void addTableEntry() {
         TableEntry entry = new TableEntry(this);
         tableEntries.add(entry);
         tablesContainer.getChildren().add(entry);
+        refreshTableCount();
     }
 
     void removeTable(TableEntry entry) {
         tableEntries.remove(entry);
         tablesContainer.getChildren().remove(entry);
         rebuildPKList();
+        refreshTableCount();
+    }
+
+    private void refreshTableCount() {
+        int n = tableEntries.size();
+        tableCountLabel.setText(n + (n == 1 ? " Table" : " Tables"));
     }
 
     void rebuildPKList() {
@@ -116,6 +177,7 @@ public class SchemasAdd extends VBox {
         }
         db.MakeSchema(schema);
         root.refreshData();
+        onDone.run();
     }
 
     static String fieldStyle() {
@@ -126,7 +188,7 @@ public class SchemasAdd extends VBox {
 
     static Button filledBtn(String label) {
         Button b = new Button(label);
-        b.setStyle("-fx-background-color: #2E5A47; -fx-text-fill: white;" +
+        b.setStyle("-fx-background-color: #1C2333; -fx-text-fill: white;" +
                 "-fx-background-radius: 8; -fx-font-weight: bold;" +
                 "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
         return b;
@@ -134,8 +196,8 @@ public class SchemasAdd extends VBox {
 
     static Button outlineBtn(String label) {
         Button b = new Button(label);
-        b.setStyle("-fx-background-color: white; -fx-text-fill: #2E5A47;" +
-                "-fx-border-color: #2E5A47; -fx-border-radius: 8;" +
+        b.setStyle("-fx-background-color: white; -fx-text-fill: #1C2333;" +
+                "-fx-border-color: #1C2333; -fx-border-radius: 8;" +
                 "-fx-background-radius: 8; -fx-font-weight: bold;" +
                 "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
         return b;
@@ -143,7 +205,7 @@ public class SchemasAdd extends VBox {
 
     static ComboBox<String> greenCombo(ObservableList<String> items) {
         ComboBox<String> cb = new ComboBox<>(items);
-        cb.setStyle("-fx-background-color: #2E5A47; -fx-background-radius: 8;" +
+        cb.setStyle("-fx-background-color: #1C2333; -fx-background-radius: 8;" +
                 "-fx-cursor: hand; -fx-padding: 2 4;");
         cb.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(String s, boolean empty) {
@@ -167,6 +229,7 @@ public class SchemasAdd extends VBox {
         final TextField pkNameField;
         private final ComboBox<String> pkTypeBox;
         private final VBox fieldsContainer;
+        private final Label emptyFieldsLabel;
         private final List<FieldEntry> fieldEntries = new ArrayList<>();
 
         TableEntry(SchemasAdd parent) {
@@ -209,6 +272,10 @@ public class SchemasAdd extends VBox {
 
             fieldsContainer = new VBox(0);
 
+            emptyFieldsLabel = new Label("No extra fields yet — add columns beyond the primary key.");
+            emptyFieldsLabel.setStyle("-fx-text-fill: #A7AEB8; -fx-font-size: 12; -fx-padding: 12 16;");
+            fieldsContainer.getChildren().add(emptyFieldsLabel);
+
             Button addFieldBtn = filledBtn("Add Field");
             addFieldBtn.setOnAction(e -> addFieldEntry());
             HBox addRow = new HBox(addFieldBtn);
@@ -219,6 +286,7 @@ public class SchemasAdd extends VBox {
         }
 
         private void addFieldEntry() {
+            fieldsContainer.getChildren().remove(emptyFieldsLabel);
             FieldEntry fe = new FieldEntry(this);
             fieldEntries.add(fe);
             fieldsContainer.getChildren().add(fe);
@@ -227,6 +295,7 @@ public class SchemasAdd extends VBox {
         void removeField(FieldEntry fe) {
             fieldEntries.remove(fe);
             fieldsContainer.getChildren().remove(fe);
+            if (fieldEntries.isEmpty()) fieldsContainer.getChildren().add(emptyFieldsLabel);
         }
 
         Table buildTable() {

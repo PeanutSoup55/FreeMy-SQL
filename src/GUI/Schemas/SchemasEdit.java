@@ -63,7 +63,7 @@ public class SchemasEdit extends BorderPane {
         );
         deleteSchemaBtn.setOnAction(e -> confirmDeleteSchema());
 
-        titleText = new Text("Edit Schema — " + schemaName);
+        titleText = new Text("Edit Schema: " + schemaName);
         titleText.setFont(Font.font("System", FontWeight.BOLD, 20));
         titleText.setFill(Color.WHITE);
 
