@@ -2,6 +2,7 @@ package GUI;
 
 import GUI.Schemas.*;
 import GUI.Schemas.LoginGen.LoginGen;
+import GUI.Settings.Settings;
 import Objects.*;
 import SSH.SSHConnection;
 import globalfuncs.creds;
@@ -58,6 +59,7 @@ public class Root extends BorderPane {
     public void createSide() {
         // LEFT RAIL - icons only
         VBox rail = new VBox();
+        rail.setPadding(new Insets(0, 0, 20, 0));
         rail.setSpacing(10);
         rail.setPrefWidth(52);
         rail.setMinWidth(52);
@@ -80,6 +82,12 @@ public class Root extends BorderPane {
         for (int i = 0; i < LABELS.length; i++) {
             rail.getChildren().add(createRailIcon(ICONS[i], LABELS[i]));
         }
+
+        Region railSpacer = new Region();
+        VBox.setVgrow(railSpacer, Priority.ALWAYS);
+        rail.getChildren().add(railSpacer);
+
+        rail.getChildren().add(createRailIcon("assets/settings.png", "Settings"));
 
         // SCHEMA TREE PANEL - only shown when Schemas is active
         VBox schemaPanel = new VBox();
@@ -151,6 +159,7 @@ public class Root extends BorderPane {
             case "Logs" -> setCenter(new LogsRoot());
             case "SSH" -> setCenter(new SSHConnection(null));
             case "Send Feedback..." -> setCenter(new FeedbackDialog());
+            case "Settings" -> setCenter(new Settings());
         }
     }
 
