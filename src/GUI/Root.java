@@ -32,14 +32,13 @@ import java.util.Optional;
 public class Root extends BorderPane {
 
     private String  activeMenu = "Schemas";
-    private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs", "SSH", "Send Feedback..."};
+    private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs", "SSH"};
     private final String[] ICONS  = {
             "assets/schema.png",
             "assets/query.png",
             "assets/creds.png",
             "assets/logs.png",
-            "assets/ssh.png",
-            "assets/feedback.png"
+            "assets/ssh.png"
     };
     private SchemasRoot schemasRoot;
     private HBox selectedTab;
@@ -158,7 +157,6 @@ public class Root extends BorderPane {
             case "Credentials" -> setCenter(new Creds());
             case "Logs" -> setCenter(new LogsRoot());
             case "SSH" -> setCenter(new SSHConnection(null));
-            case "Send Feedback..." -> setCenter(new FeedbackDialog());
             case "Settings" -> setCenter(new Settings());
         }
     }
