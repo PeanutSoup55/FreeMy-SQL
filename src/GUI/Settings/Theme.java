@@ -13,26 +13,35 @@ import javafx.scene.shape.Rectangle;
 
 public class Theme extends BorderPane {
 
-    private final String[] softBeach = {"#51E2F5", "#9DF9EF", "#EDF756", "#FFA8B6", "#A28089"};
-    private final String[] violetIceberg = {"#A0D2EB", "#E5EAF5", "#D0BDF4", "#8458B3", "#494D5F"};
-    private final String[] contrastBlast = {"#FF1D58", "#F75990", "#FFF685", "#00DDFF", "#0049B7"};
+    public static boolean isLight;
+    public static Runnable onThemeChanged;
+
+    private final String[] defaultTheme = {"#1C2333", "#080C14", "#121723", "#ffffff", "#ffffff"};
+    // Nord (used in i3, Alacritty, many dev tools) — dark
+    private final String[] softBeach = {"#3B4252", "#2E3440", "#434C5E", "#ECEFF4", "#D8DEE9"};
+
+    // GitHub Dark Dimmed — dark
+    private final String[] violetIceberg = {"#22272E", "#1C2128", "#2D333B", "#ADBAC7", "#768390"};
+
+    // Linear-style light UI — light
+    private final String[] contrastBlast = {"#F7F8FA", "#FFFFFF", "#ECEEF1", "#1B1F2A", "#6B7280"};
 
     // Global colour variables — populated with the selected palette's values
-    public static String colour1;
-    public static String colour2;
-    public static String colour3;
-    public static String colour4;
-    public static String colour5;
+    public static String colour1 = "#1C2333";
+    public static String colour2 = "#080C14";
+    public static String colour3 = "#121723";
+    public static String colour4 = "#ffffff";
+    public static String colour5 = "#ffffff";
 
     private VBox rowsContainer;
-    private String selectedTheme = "Soft Beach";
+    private String selectedTheme = "Default";
 
     public Theme() {
         setStyle("-fx-background-color: #F4F5F9;");
         setTop(buildHeader());
         setCenter(buildContent());
 
-        applySelection(softBeach);
+        applySelection(defaultTheme);
     }
 
     private HBox buildHeader() {
@@ -55,7 +64,7 @@ public class Theme extends BorderPane {
     private ScrollPane buildContent() {
         rowsContainer = new VBox(24);
         rowsContainer.setPadding(new Insets(32, 48, 48, 48));
-
+        rowsContainer.getChildren().add(makeRow("Default", defaultTheme));
         rowsContainer.getChildren().add(makeRow("Soft Beach", softBeach));
         rowsContainer.getChildren().add(makeRow("Violet Iceberg", violetIceberg));
         rowsContainer.getChildren().add(makeRow("Contrast Blast", contrastBlast));
@@ -106,6 +115,7 @@ public class Theme extends BorderPane {
             selectedTheme = name;
             applySelection(colours);
             refreshSelection();
+            if (onThemeChanged != null) onThemeChanged.run();   // NEW
         });
 
         return container;
@@ -117,6 +127,13 @@ public class Theme extends BorderPane {
         colour3 = colours[2];
         colour4 = colours[3];
         colour5 = colours[4];
+        isLight = isLightColour(colour1);
+    }
+
+    private boolean isLightColour(String hex) {
+        javafx.scene.paint.Color c = javafx.scene.paint.Color.web(hex);
+        double luminance = 0.299 * c.getRed() + 0.587 * c.getGreen() + 0.114 * c.getBlue();
+        return luminance > 0.5;
     }
 
     private void refreshSelection() {
