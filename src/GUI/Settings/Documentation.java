@@ -1,4 +1,9 @@
 package GUI.Settings;
 
-public class Documentation {
+import javafx.scene.layout.BorderPane;
+
+public class Documentation extends BorderPane {
+    public Documentation(){
+
+    }
 }

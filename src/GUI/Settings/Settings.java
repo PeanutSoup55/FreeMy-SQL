@@ -99,43 +99,11 @@ public class Settings extends BorderPane {
 
     private void switchPage(String page) {
         switch (page) {
-            case "Account" -> setCenter(buildAccountPage());
-            case "Theme" -> setCenter(buildThemePage());
-            case "Docs" -> setCenter(buildDocsPage());
+            case "Account" -> setCenter(new Account());
+            case "Theme" -> setCenter(new Theme());
+            case "Docs" -> setCenter(new Documentation());
             case "Give Feedback" -> setCenter(new FeedbackDialog());
-            case "Version News" -> setCenter(buildVersionNewsPage());
+            case "Version News" -> setCenter(new Versions());
         }
-    }
-
-    private VBox buildAccountPage() {
-        Label header = new Label("Account");
-        header.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
-        VBox page = new VBox(12, header);
-        page.setPadding(new Insets(24));
-        return page;
-    }
-
-    private VBox buildThemePage() {
-        Label header = new Label("Theme");
-        header.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
-        VBox page = new VBox(12, header);
-        page.setPadding(new Insets(24));
-        return page;
-    }
-
-    private VBox buildDocsPage() {
-        Label header = new Label("Docs");
-        header.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
-        VBox page = new VBox(12, header);
-        page.setPadding(new Insets(24));
-        return page;
-    }
-
-    private VBox buildVersionNewsPage() {
-        Label header = new Label("Version News");
-        header.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
-        VBox page = new VBox(12, header);
-        page.setPadding(new Insets(24));
-        return page;
     }
 }

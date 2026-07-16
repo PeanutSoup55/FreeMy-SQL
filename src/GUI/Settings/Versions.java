@@ -1,4 +1,9 @@
 package GUI.Settings;
 
-public class Versions {
+import javafx.scene.layout.BorderPane;
+
+public class Versions extends BorderPane {
+    public Versions(){
+
+    }
 }
