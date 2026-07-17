@@ -1,4 +1,5 @@
 package GUI.Schemas;
+import GUI.Settings.Theme;
 import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
@@ -54,14 +55,8 @@ public class SchemasRoot extends BorderPane {
 
     public SchemasRoot() {
         createTables();
+        Theme.registerThemeListener(this, this::createTables);
     }
-
-    private Runnable onRequestNavigateHome = () -> {};
-
-    public void setOnRequestNavigateHome(Runnable callback) {
-        this.onRequestNavigateHome = callback;
-    }
-
 
     public void createTables() {
         mainSplit = null;
@@ -385,8 +380,7 @@ public class SchemasRoot extends BorderPane {
 
         HBox header = new HBox(title, spacer, hamburger);
         header.setPadding(new Insets(8, 12, 8, 12));
-        header.setStyle("-fx-background-color: #1C2333; -fx-background-radius: 8 8 0 0;");
-        header.setAlignment(Pos.CENTER_LEFT);
+        header.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-background-radius: 8 8 0 0;");        header.setAlignment(Pos.CENTER_LEFT);
         card.getChildren().add(header);
 
         for (Field field : table.getFields()) {
@@ -469,13 +463,13 @@ public class SchemasRoot extends BorderPane {
             if (newSkin != null) {
                 Platform.runLater(() -> {
                     tv.lookupAll(".column-header-background").forEach(n ->
-                            n.setStyle("-fx-background-color: #1C2333;"));
+                            n.setStyle("-fx-background-color: " + Theme.colour1 + ";"));
                     tv.lookupAll(".column-header").forEach(n ->
                             n.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-size: 38px;"));
                     tv.lookupAll(".column-header > .label").forEach(n ->
                             n.setStyle("-fx-text-fill: white; -fx-font-family: Monospace; -fx-font-size: 12px; -fx-font-weight: bold; -fx-alignment: CENTER-LEFT; -fx-padding: 0 12;"));
                     tv.lookupAll(".filler").forEach(n ->
-                            n.setStyle("-fx-background-color: #1C2333;"));
+                            n.setStyle("-fx-background-color: " + Theme.colour1 + ";"));
                 });
             }
         });
@@ -523,7 +517,7 @@ public class SchemasRoot extends BorderPane {
     }
 
     private String activeTabStyle() {
-        return "-fx-background-color: #1C2333;" +
+        return "-fx-background-color: " + Theme.colour1 + ";" +
                 "-fx-text-base-color: white;" +
                 "-fx-mark-color: white;" +
                 "-fx-font-weight: bold;" +
@@ -600,13 +594,11 @@ public class SchemasRoot extends BorderPane {
             cp1x=r[0]; cp1y=r[1]; cp2x=r[2]; cp2y=r[3];
 
             CubicCurve curve = new CubicCurve(sx,sy,cp1x,cp1y,cp2x,cp2y,ex,ey);
-            curve.setStroke(Color.web("#1C2333"));
-            curve.setStrokeWidth(1.8);
+            curve.setStroke(Color.web(Theme.colour1));
+            curve.setStrokeWidth(2.4);
             curve.setFill(Color.TRANSPARENT);
 
-            Circle dot = new Circle(sx, sy, 4.5, Color.web("#1C2333"));
-            dot.setStroke(Color.WHITE);
-            dot.setStrokeWidth(1.2);
+            Circle dot = new Circle(sx, sy, 4.5, Color.web(Theme.colour1));
 
             double angle = Math.atan2(ey-cp2y, ex-cp2x);
             overlay.getChildren().addAll(curve, dot, buildArrow(ex, ey, angle));
@@ -625,11 +617,11 @@ public class SchemasRoot extends BorderPane {
                 sx + bulge, sy - 20,
                 ex + bulge, ey + 20,
                 ex, ey);
-        loop.setStroke(Color.web("#1C2333"));
+        loop.setStroke(Color.web(Theme.colour1));
         loop.setStrokeWidth(1.6);
         loop.setFill(Color.TRANSPARENT);
 
-        Circle dot = new Circle(sx, sy, 4, Color.web("#1C2333"));
+        Circle dot = new Circle(sx, sy, 4, Color.web(Theme.colour1));
         double angle = Math.atan2(ey - (ey + 20), ex - (ex + bulge));
         overlay.getChildren().addAll(loop, dot, buildArrow(ex, ey, angle));
     }
@@ -779,16 +771,16 @@ public class SchemasRoot extends BorderPane {
     }
 
     private Polygon buildArrow(double tipX, double tipY, double angleRad) {
-        double s  = 9.0;
+        double s  = 14.0;
         double bx = tipX - Math.cos(angleRad) * s;
         double by = tipY - Math.sin(angleRad) * s;
-        double wx = -Math.sin(angleRad) * (s * 0.45);
-        double wy =  Math.cos(angleRad) * (s * 0.45);
+        double wx = -Math.sin(angleRad) * (s * 0.5);   // was 0.45 — slightly wider base to match
+        double wy =  Math.cos(angleRad) * (s * 0.5);
         Polygon arrow = new Polygon(
                 tipX,        tipY,
                 bx + wx,     by + wy,
                 bx - wx,     by - wy);
-        arrow.setFill(Color.web("#1C2333"));
+        arrow.setFill(Color.web(Theme.colour1));
         return arrow;
     }
 

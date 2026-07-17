@@ -60,7 +60,7 @@ public class Root extends BorderPane {
         schemasRoot = new SchemasRoot();
         createSide();
         setCenter(schemasRoot);
-        Theme.onThemeChanged = this::createSide;
+        Theme.registerThemeListener(this, this::createSide);
     }
 
     public void createSide() {

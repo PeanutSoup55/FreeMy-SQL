@@ -16,12 +16,14 @@ public class Settings extends BorderPane {
     private final String[] LABELS = {"Account", "Theme", "Docs", "Give Feedback", "Version News"};
     private final String[] ICONS = { "assets/account.png", "assets/theme.png", "assets/docs.png", "assets/feedback.png", "assets/version.png"};
     private VBox navBar;
+    private Label title;
     private String activePage = "Account";
 
     public Settings() {
         setStyle("-fx-background-color: #FFFFFF;");
         buildNav();
         switchPage(activePage);
+        Theme.registerThemeListener(this, this::refreshTheme);
     }
 
     private void buildNav() {
@@ -30,10 +32,10 @@ public class Settings extends BorderPane {
         navBar.setPrefWidth(180);
         navBar.setMinWidth(180);
         navBar.setPadding(new Insets(16, 8, 16, 8));
-        navBar.setStyle("-fx-background-color: #080C14;");
+        navBar.setStyle("-fx-background-color: " + Theme.colour1 + ";");
 
-        Label title = new Label("Settings");
-        title.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 16; -fx-font-weight: bold;");
+        title = new Label("Settings");
+        title.setStyle("-fx-text-fill: " + Theme.colour4 + "; -fx-font-size: 16; -fx-font-weight: bold;");
         VBox titleWrap = new VBox(title);
         titleWrap.setPadding(new Insets(0, 8, 16, 8));
         navBar.getChildren().add(titleWrap);
@@ -64,7 +66,7 @@ public class Settings extends BorderPane {
 
         nav.setOnMouseEntered(e -> {
             if (!label.equals(activePage))
-                nav.setStyle(nav.getStyle() + "-fx-background-color: rgba(255,255,255,0.08);");
+                nav.setStyle(nav.getStyle() + "-fx-background-color: " + Theme.colour3 + ";");
         });
         nav.setOnMouseExited(e -> {
             if (!label.equals(activePage))
@@ -90,11 +92,18 @@ public class Settings extends BorderPane {
 
     private void applyNavStyle(HBox nav, Label item, boolean active) {
         nav.setStyle(active
-                ? "-fx-background-color: rgba(255,255,255,0.15); -fx-background-radius: 6;"
+                ? "-fx-background-color: " + Theme.colour3 + "; -fx-background-radius: 6;"
                 : "-fx-background-color: transparent; -fx-background-radius: 6;");
         item.setStyle(active
-                ? "-fx-text-fill: #FFFFFF; -fx-font-weight: bold;"
-                : "-fx-text-fill: #C8D0D8; -fx-font-weight: normal;");
+                ? "-fx-text-fill: " + Theme.colour4 + "; -fx-font-weight: bold;"
+                : "-fx-text-fill: " + Theme.colour5 + "; -fx-font-weight: normal;");
+    }
+
+    // NEW: re-apply theme colours to already-built nav without rebuilding the whole tree
+    private void refreshTheme() {
+        navBar.setStyle("-fx-background-color: " + Theme.colour1 + ";");
+        title.setStyle("-fx-text-fill: " + Theme.colour4 + "; -fx-font-size: 16; -fx-font-weight: bold;");
+        rebuildNavStyles();
     }
 
     private void switchPage(String page) {
