@@ -1,6 +1,7 @@
 package GUI.Settings;
 
 import GUI.FeedbackDialog;
+import GUI.Settings.Documentation.Documentation;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
@@ -35,7 +36,7 @@ public class Settings extends BorderPane {
         navBar.setStyle("-fx-background-color: " + Theme.colour1 + ";");
 
         title = new Label("Settings");
-        title.setStyle("-fx-text-fill: " + Theme.colour4 + "; -fx-font-size: 16; -fx-font-weight: bold;");
+        title.setStyle("-fx-text-fill: " + Theme.colour6 + "; -fx-font-size: 16; -fx-font-weight: bold;");
         VBox titleWrap = new VBox(title);
         titleWrap.setPadding(new Insets(0, 8, 16, 8));
         navBar.getChildren().add(titleWrap);
@@ -95,14 +96,14 @@ public class Settings extends BorderPane {
                 ? "-fx-background-color: " + Theme.colour3 + "; -fx-background-radius: 6;"
                 : "-fx-background-color: transparent; -fx-background-radius: 6;");
         item.setStyle(active
-                ? "-fx-text-fill: " + Theme.colour4 + "; -fx-font-weight: bold;"
-                : "-fx-text-fill: " + Theme.colour5 + "; -fx-font-weight: normal;");
+                ? "-fx-text-fill: " + Theme.colour6 + "; -fx-font-weight: bold;"
+                : "-fx-text-fill: " + Theme.colour7 + "; -fx-font-weight: normal;");
     }
 
     // NEW: re-apply theme colours to already-built nav without rebuilding the whole tree
     private void refreshTheme() {
         navBar.setStyle("-fx-background-color: " + Theme.colour1 + ";");
-        title.setStyle("-fx-text-fill: " + Theme.colour4 + "; -fx-font-size: 16; -fx-font-weight: bold;");
+        title.setStyle("-fx-text-fill: " + Theme.colour6 + "; -fx-font-size: 16; -fx-font-weight: bold;");
         rebuildNavStyles();
     }
 

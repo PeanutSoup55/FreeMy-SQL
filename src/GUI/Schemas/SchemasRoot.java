@@ -7,6 +7,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import globalfuncs.db;
 import javafx.scene.paint.Color;
@@ -251,11 +253,19 @@ public class SchemasRoot extends BorderPane {
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
         card.setMaxWidth(Region.USE_COMPUTED_SIZE);
 
-        Label hamburger = new Label("☰");
-        hamburger.setTextFill(Color.WHITE);
-        hamburger.setFont(Font.font("System", FontWeight.BOLD, 18));
+        ImageView hamburgerIcon;
+        if (Theme.isLight) {
+            hamburgerIcon = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/nav2.png"))));
+        }else {
+            hamburgerIcon = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("assets/nav.png"))));
+        }
+
+        hamburgerIcon.setFitHeight(20);
+        hamburgerIcon.setFitWidth(20);
+        StackPane hamburger = new StackPane(hamburgerIcon);
+        hamburger.setPrefSize(36, 36);   // the actual clickable hit area, bigger than the icon itself
+        hamburger.setPickOnBounds(true);
         hamburger.setCursor(Cursor.HAND);
-        hamburger.setPadding(new Insets(0, 4, 0, 4));
 
         ContextMenu menu = new ContextMenu();
         menu.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 8;" +
@@ -263,7 +273,7 @@ public class SchemasRoot extends BorderPane {
                 "-fx-selection-bar: #EAEAEA;" +
                 "-fx-selection-bar-text: #333333;");
 
-        MenuItem showDataItem  = makeMenuItem("Show Data");
+        MenuItem showDataItem = makeMenuItem("Show Data");
         MenuItem crudItem = makeMenuItem("CRUD Operations");
         MenuItem editItem = makeMenuItem("Edit Table");
         MenuItem deleteItem = makeMenuItem("Delete Table");
@@ -372,7 +382,12 @@ public class SchemasRoot extends BorderPane {
         });
 
         Label title = new Label(table.getName());
-        title.setTextFill(Color.WHITE);
+        if (Theme.isLight) {
+            title.setTextFill(Color.web(Theme.colourDark));
+        } else {
+            title.setTextFill(Color.WHITE);
+        }
+
         title.setFont(Font.font("System", FontWeight.BOLD, 13));
 
         Region spacer = new Region();
@@ -380,7 +395,8 @@ public class SchemasRoot extends BorderPane {
 
         HBox header = new HBox(title, spacer, hamburger);
         header.setPadding(new Insets(8, 12, 8, 12));
-        header.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-background-radius: 8 8 0 0;");        header.setAlignment(Pos.CENTER_LEFT);
+        header.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-background-radius: 8 8 0 0;");
+        header.setAlignment(Pos.CENTER_LEFT);
         card.getChildren().add(header);
 
         for (Field field : table.getFields()) {

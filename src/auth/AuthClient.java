@@ -153,4 +153,67 @@ public class AuthClient {
             return sb.toString();
         }
     }
+
+
+    public record SubscriptionDetails(String status, Instant currentPeriodEnd) {}
+
+    public static CompletableFuture<String> getUserEmail(String accessToken) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                URL url = new URL(SUPABASE_URL + "/auth/v1/user");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(6000);
+                conn.setReadTimeout(6000);
+                conn.setRequestProperty("apikey", SUPABASE_ANON_KEY);
+                conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+                JsonObject obj = JsonParser.parseString(readResponse(conn)).getAsJsonObject();
+                return obj.has("email") ? obj.get("email").getAsString() : null;
+            } catch (Exception e) {
+                return null;
+            }
+        });
+    }
+
+    public static CompletableFuture<SubscriptionDetails> getSubscriptionDetails(String userId, String accessToken) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                JsonObject row = getSubscriptionRow(userId, accessToken);
+                if (row == null) return null;
+                String status = row.has("status") ? row.get("status").getAsString() : "inactive";
+                Instant expires = (row.has("current_period_end") && !row.get("current_period_end").isJsonNull())
+                        ? Instant.parse(row.get("current_period_end").getAsString()) : null;
+                return new SubscriptionDetails(status, expires);
+            } catch (IOException e) {
+                return null;
+            }
+        });
+    }
+
+    public static CompletableFuture<String> createBillingPortalSession(String accessToken, String returnUrl) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                URL url = new URL(SUPABASE_URL + "/functions/v1/create-portal-session");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+                conn.setDoOutput(true);
+
+                JsonObject body = new JsonObject();
+                body.addProperty("return_url", returnUrl);
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                }
+
+                JsonObject response = JsonParser.parseString(readResponse(conn)).getAsJsonObject();
+                return response.has("url") ? response.get("url").getAsString() : null;
+            } catch (Exception e) {
+                return null;
+            }
+        });
+    }
 }
