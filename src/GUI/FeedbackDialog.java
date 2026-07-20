@@ -1,5 +1,6 @@
 package GUI;
 
+import GUI.Settings.Theme;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -18,61 +19,51 @@ import java.util.concurrent.CompletableFuture;
 
 public class FeedbackDialog extends BorderPane {
 
-    // --- Palette (matches SSHConnection / LogsRoot light theme) ---
-    private static final String BG        = "#F4F5F9";
-    private static final String CARD      = "#FFFFFF";
-    private static final String FIELD_BG  = "#F7F8FB";
-    private static final String BORDER    = "#E1E5EC";
-    private static final String ACCENT    = "#1C2333";
-    private static final String ACCENT_BG = "#EAF0FD";
-    private static final String TEXT      = "#1C2230";
-    private static final String MUTED     = "#6B7280";
-    private static final String GREEN     = "#1E9E5A";
-    private static final String RED       = "#D9434B";
-    private static final String SHADOW    = "dropshadow(gaussian, rgba(28,34,48,0.06), 14, 0, 0, 3)";
+    // --- Fixed semantic colours (not theme-driven) ---
+    private static final String GREEN  = "#1E9E5A";
+    private static final String RED    = "#D9434B";
+    private static final String SHADOW = "dropshadow(gaussian, rgba(28,34,48,0.06), 14, 0, 0, 3)";
+
+    private static final String STAR_FILLED = "★";
+    private static final String STAR_EMPTY  = "☆";
+    private static final String STAR_COLOR  = "#f5a623";
 
     private int selectedStars = 0;
     private final Label[] starLabels = new Label[5];
     private Label inlineError;
     private Button submitBtn;
+    private Button clearBtn;
 
-    private static final String STAR_FILLED = "★";
-    private static final String STAR_EMPTY  = "☆";
-    private static final String STAR_COLOR  = "#f5a623";
-    private static final String STAR_OFF    = "#D9DEE8";
+    // --- Elements that need re-styling on theme change ---
+    private VBox card;
+    private Text title;
+    private Label subtitle;
+    private Separator sep;
+    private Label starsHeading;
+    private Label messageHeading;
+    private TextArea messageArea;
 
     public FeedbackDialog() {
         setPadding(new Insets(28));
-        setStyle("-fx-background-color: " + BG + ";");
 
         // --- Card ---
-        VBox card = new VBox(24);
+        card = new VBox(24);
         card.setPadding(new Insets(36));
         card.setMaxWidth(520);
-        card.setStyle(
-                "-fx-background-color: " + CARD + ";" +
-                        "-fx-background-radius: 14;" +
-                        "-fx-border-color: " + BORDER + ";" +
-                        "-fx-border-radius: 14;" +
-                        "-fx-effect: " + SHADOW + ";"
-        );
 
         // --- Header inside card ---
-        Text title = new Text("Send Feedback");
+        title = new Text("Send Feedback");
         title.setFont(Font.font("System", FontWeight.BOLD, 22));
-        title.setFill(Color.web(TEXT));
 
-        Label subtitle = new Label("How is Free My Query working for you?");
+        subtitle = new Label("How is Free My Query working for you?");
         subtitle.setFont(Font.font("System", 13));
-        subtitle.setTextFill(Color.web(MUTED));
 
         VBox titleBlock = new VBox(4, title, subtitle);
 
-        Separator sep = new Separator();
-        sep.setStyle("-fx-background-color: " + BORDER + ";");
+        sep = new Separator();
 
         // --- Star rating ---
-        Label starsHeading = smallLabel("Your Rating");
+        starsHeading = smallLabel("Your Rating");
 
         HBox starsRow = new HBox(6);
         starsRow.setAlignment(Pos.CENTER_LEFT);
@@ -80,7 +71,7 @@ public class FeedbackDialog extends BorderPane {
         for (int i = 0; i < 5; i++) {
             Label star = new Label(STAR_EMPTY);
             star.setFont(Font.font("System", 34));
-            star.setTextFill(Color.web(STAR_OFF));
+            star.setTextFill(Color.web(starOffColour()));
             star.setStyle("-fx-cursor: hand; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
             final int index = i + 1;
 
@@ -98,22 +89,12 @@ public class FeedbackDialog extends BorderPane {
         VBox starsBlock = new VBox(8, starsHeading, starsRow);
 
         // --- Message ---
-        Label messageHeading = smallLabel("Your Message");
+        messageHeading = smallLabel("Your Message");
 
-        TextArea messageArea = new TextArea();
+        messageArea = new TextArea();
         messageArea.setPromptText("Tell us what you think, report a bug, or suggest a feature...");
         messageArea.setPrefRowCount(6);
         messageArea.setWrapText(true);
-        messageArea.setStyle(
-                "-fx-background-color: " + FIELD_BG + ";" +
-                        "-fx-border-color: " + BORDER + ";" +
-                        "-fx-border-radius: 8;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-font-size: 13px;" +
-                        "-fx-padding: 10;" +
-                        "-fx-focus-color: " + ACCENT + ";" +
-                        "-fx-faint-focus-color: transparent;"
-        );
 
         VBox messageBlock = new VBox(8, messageHeading, messageArea);
 
@@ -126,7 +107,7 @@ public class FeedbackDialog extends BorderPane {
 
         // --- Buttons ---
         submitBtn = filledBtn("Send Feedback");
-        Button clearBtn = outlineBtn("Clear");
+        clearBtn = outlineBtn("Clear");
 
         clearBtn.setOnAction(e -> {
             messageArea.clear();
@@ -165,10 +146,53 @@ public class FeedbackDialog extends BorderPane {
                 buttonRow
         );
 
-        // --- Center the card on the page ---
         StackPane centered = new StackPane(card);
         StackPane.setAlignment(card, Pos.CENTER);
         setCenter(centered);
+
+        applyTheme();
+        Theme.registerThemeListener(this, this::applyTheme);
+    }
+
+    private void applyTheme() {
+        Platform.runLater(() -> {
+            setStyle("-fx-background-color: " + Theme.colour2 + ";");
+
+            card.setStyle(
+                    "-fx-background-color: " + Theme.colour1 + ";" +
+                            "-fx-background-radius: 14;" +
+                            "-fx-border-color: " + Theme.colour3 + ";" +
+                            "-fx-border-radius: 14;" +
+                            "-fx-effect: " + SHADOW + ";"
+            );
+
+            title.setFill(Color.web(Theme.colour6));
+            subtitle.setTextFill(Color.web(Theme.colour7));
+            sep.setStyle("-fx-background-color: " + Theme.colour3 + ";");
+            starsHeading.setTextFill(Color.web(Theme.colour7));
+            messageHeading.setTextFill(Color.web(Theme.colour7));
+
+            messageArea.setStyle(
+                    "-fx-background-color: " + Theme.colour1 + ";" +
+                            "-fx-border-color: " + Theme.colour3 + ";" +
+                            "-fx-border-radius: 8;" +
+                            "-fx-background-radius: 8;" +
+                            "-fx-font-size: 13px;" +
+                            "-fx-padding: 10;" +
+                            "-fx-focus-color: " + Theme.colourDark + ";" +
+                            "-fx-faint-focus-color: transparent;" +
+                            "-fx-text-fill: " + Theme.colour6 + ";"
+            );
+
+            submitBtn.setStyle(filledStyle());
+            clearBtn.setStyle(outlineStyle());
+
+            highlightStars(selectedStars);
+        });
+    }
+
+    private String starOffColour() {
+        return Theme.colour3;
     }
 
     private void highlightStars(int count) {
@@ -178,7 +202,7 @@ public class FeedbackDialog extends BorderPane {
                 starLabels[i].setTextFill(Color.web(STAR_COLOR));
             } else {
                 starLabels[i].setText(STAR_EMPTY);
-                starLabels[i].setTextFill(Color.web(STAR_OFF));
+                starLabels[i].setTextFill(Color.web(starOffColour()));
             }
         }
     }
@@ -254,8 +278,20 @@ public class FeedbackDialog extends BorderPane {
     }
 
     private static String filledStyle() {
-        return "-fx-background-color: " + ACCENT + ";" +
+        return "-fx-background-color: " + Theme.colourDark + ";" +
                 "-fx-text-fill: white;" +
+                "-fx-background-radius: 8;" +
+                "-fx-font-weight: bold;" +
+                "-fx-cursor: hand;" +
+                "-fx-padding: 10 20;" +
+                "-fx-font-size: 13;" +
+                "-fx-focus-color: transparent;" +
+                "-fx-faint-focus-color: transparent;";
+    }
+
+    private static String outlineStyle() {
+        return "-fx-background-color: " + Theme.colourDark + "22;" +
+                "-fx-text-fill: " + Theme.colour6 + ";" +
                 "-fx-background-radius: 8;" +
                 "-fx-font-weight: bold;" +
                 "-fx-cursor: hand;" +
@@ -273,23 +309,12 @@ public class FeedbackDialog extends BorderPane {
 
     private static Button outlineBtn(String text) {
         Button b = new Button(text);
-        b.setStyle(
-                "-fx-background-color: " + ACCENT_BG + ";" +
-                        "-fx-text-fill: " + ACCENT + ";" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-padding: 10 20;" +
-                        "-fx-font-size: 13;" +
-                        "-fx-focus-color: transparent;" +
-                        "-fx-faint-focus-color: transparent;"
-        );
+        b.setStyle(outlineStyle());
         return b;
     }
 
     private static Label smallLabel(String text) {
         Label l = new Label(text);
-        l.setTextFill(Color.web(MUTED));
         l.setFont(Font.font("System", FontWeight.BOLD, 12));
         return l;
     }
