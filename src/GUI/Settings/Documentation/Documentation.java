@@ -11,68 +11,17 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 
 import java.util.List;
+import GUI.Settings.Documentation.DocTypes.DocCategory;
+import GUI.Settings.Documentation.DocTypes.DocPage;
 
 public class Documentation extends BorderPane {
 
-    private record DocPage(String key, String title, String body, String imagePath) {}
-    private record DocCategory(String key, String label, List<DocPage> pages) {}
-
     private static final List<DocCategory> CATEGORIES = List.of(
-            new DocCategory("getting-started", "Getting Started", List.of(
-                    new DocPage("first-connection", "First Connection",
-                            "Connect to your first MySQL database. Enter your host, port, username, and password, "
-                                    + "then Free My Query will read the schema and render it as an interactive diagram.",
-                            "assets/docs/getting-started/first-connection.png"),
-                    new DocPage("troubleshoot-first-connection", "Troubleshooting First Connection",
-                            "Common causes of connection failure: incorrect host/port, firewall rules blocking the "
-                                    + "MySQL port, or a user account that doesn't have remote-login privileges.",
-                            "assets/docs/getting-started/troubleshoot-first-connection.png")
-            )),
-            new DocCategory("schemas", "Schemas", List.of(
-                    new DocPage("add-schema", "Add a Schema",
-                            "Create a new schema from the sidebar. Free My Query will scaffold an empty canvas you "
-                                    + "can start adding tables to, or connect it to an existing database.",
-                            "assets/docs/schemas/add-schema.png"),
-                    new DocPage("edit-schema", "Edit a Schema",
-                            "Rename, reorganize, or delete a schema from the schema card grid. Deleting a schema does "
-                                    + "not drop the underlying database — it only removes it from the app.",
-                            "assets/docs/schemas/edit-schema.png")
-            )),
-            new DocCategory("tables", "Tables", List.of(
-                    new DocPage("make-table", "Make a Table",
-                            "Add a new table to the canvas, define columns, types, and constraints, then push it "
-                                    + "live to your database.",
-                            "assets/docs/tables/make-table.png"),
-                    new DocPage("edit-table", "Edit a Table",
-                            "Modify columns, keys, and relationships on an existing table directly from the ER diagram.",
-                            "assets/docs/tables/edit-table.png")
-            )),
-            new DocCategory("data", "Data", List.of(
-                    new DocPage("view-data", "View Data",
-                            "Browse table rows in a searchable, sortable grid without writing any SQL.",
-                            "assets/docs/data/view-data.png"),
-                    new DocPage("crud-data", "CRUD Data",
-                            "Insert, update, and delete rows directly through the GUI. Changes are validated against "
-                                    + "the table's schema before being committed.",
-                            "assets/docs/data/crud-data.png"),
-                    new DocPage("generate-login-function", "Generate Login Function",
-                            "Generate a ready-to-use login code snippet scoped to a specific table's credentials structure.",
-                            "assets/docs/data/generate-login-function.png")
-            )),
-            new DocCategory("ssh", "SSH", List.of(
-                    new DocPage("ssh-first-connection", "First Connection",
-                            "Set up an SSH tunnel to a remote MySQL instance using a host, port, and private key or "
-                                    + "password authentication.",
-                            "assets/docs/ssh/first-connection.png"),
-                    new DocPage("ssh-troubleshoot", "Troubleshoot",
-                            "Common SSH tunnel issues: wrong port, key permissions, or the remote MySQL user not "
-                                    + "being allowed to connect from the tunnel's bind address.",
-                            "assets/docs/ssh/troubleshoot.png"),
-                    new DocPage("ssh-cloning", "Cloning Schemas / Early Version Control",
-                            "Clone a remote schema locally to snapshot its structure before making changes — a "
-                                    + "lightweight stand-in for version control until proper migrations are supported.",
-                            "assets/docs/ssh/cloning.png")
-            ))
+            GettingStartedDocs.CATEGORY,
+            SchemasDocs.CATEGORY,
+            TablesDocs.CATEGORY,
+            DataDocs.CATEGORY,
+            SshDocs.CATEGORY
     );
 
     private String selectedCategory = CATEGORIES.get(0).key();
@@ -91,8 +40,6 @@ public class Documentation extends BorderPane {
             setCenter(buildContent());
         });
     }
-
-    // ---------------- Top tab bar ----------------
 
     private HBox buildTabBar() {
         HBox bar = new HBox(4);
@@ -125,13 +72,11 @@ public class Documentation extends BorderPane {
                 + "-fx-border-width: 0 0 2 0; -fx-cursor: hand;";
     }
 
-    // ---------------- Left sidebar (subsections of active tab) ----------------
-
-    private ScrollPane buildSidebar() {
+    private VBox buildSidebar() {
         DocCategory category = currentCategory();
 
         VBox navList = new VBox(2);
-        navList.setPadding(new Insets(20, 12, 12, 12));
+        navList.setPadding(new Insets(12));
         for (DocPage page : category.pages()) {
             navList.getChildren().add(buildNavItem(page));
         }
@@ -139,14 +84,15 @@ public class Documentation extends BorderPane {
         VBox sidebar = new VBox(navList);
         sidebar.setPrefWidth(220);
         sidebar.setMinWidth(220);
-        sidebar.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-border-color: transparent "
-                + Theme.colour3 + " transparent transparent; -fx-border-width: 0 1 0 0;");
+        sidebar.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-background-radius: 14; "
+                + "-fx-border-color: " + Theme.colour3 + "; -fx-border-radius: 14;");
 
-        ScrollPane scroll = new ScrollPane(sidebar);
-        scroll.setFitToWidth(true);
-        scroll.setPrefWidth(220);
-        scroll.setStyle("-fx-background: " + Theme.colour1 + "; -fx-background-color: transparent;");
-        return scroll;
+        // floats the sidebar off the window edges instead of sitting flush
+        VBox.setMargin(sidebar, new Insets(20, 0, 20, 20));
+        VBox wrapper = new VBox(sidebar);
+        wrapper.setPadding(new Insets(20, 0, 20, 20));
+
+        return wrapper;
     }
 
     private Label buildNavItem(DocPage page) {
@@ -170,8 +116,6 @@ public class Documentation extends BorderPane {
                 + "; -fx-font-size: 13px; -fx-font-weight: " + weight
                 + "; -fx-background-radius: 6; -fx-cursor: hand;";
     }
-
-    // ---------------- Content ----------------
 
     private ScrollPane buildContent() {
         DocPage page = currentPage();
@@ -210,8 +154,6 @@ public class Documentation extends BorderPane {
         if (stream == null) return null;
         return new ImageView(new Image(stream));
     }
-
-    // ---------------- Lookups ----------------
 
     private DocCategory currentCategory() {
         return CATEGORIES.stream().filter(c -> c.key().equals(selectedCategory))
