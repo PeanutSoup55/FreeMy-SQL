@@ -1,10 +1,12 @@
 package GUI.Schemas;
 
 import GUI.Root;
+import GUI.Settings.Theme;
 import Objects.Schema;
 import Objects.Table;
 import Objects.Field;
 import globalfuncs.db;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -20,6 +22,8 @@ import java.util.prefs.Preferences;
 
 public class SchemasEdit extends BorderPane {
 
+    private static final String RED = "#E88C8C";
+
     private static final Preferences ORDER_PREFS =
             Preferences.userRoot().node("Free_My_SQL/table_order");
 
@@ -32,40 +36,34 @@ public class SchemasEdit extends BorderPane {
     private final FlowPane tablesGrid = new FlowPane(16, 16);
     private final List<String> tableOrder = new ArrayList<>();
 
+    // --- elements that need re-styling on theme change ---
+    private StackPane topBar;
+    private HBox renameRow;
+    private VBox header;
+    private TextField nameField;
+    private Button backBtn;
+    private Button addTableBtn;
+    private Button renameBtn;
+    private Button deleteSchemaBtn;
+
     public SchemasEdit(Root appRoot, SchemasRoot root, String schemaName, Runnable onDone) {
         this.appRoot = appRoot;
         this.root = root;
         this.schemaName = schemaName;
         this.onDone = onDone;
 
-        setStyle("-fx-background-color: #F4F5F9;");
-
-        // ── Back button: dark header, white text ──────────────────
-        Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
-                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
-                "-fx-background-radius: 8; -fx-padding: 8 16;" +
-                "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+        // ── Back button ──────────────────
+        backBtn = new Button("← Back");
         backBtn.setOnAction(e -> onDone.run());
 
-        Button addTableBtn = new Button("+ Add Table");
-        addTableBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
-                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
-                "-fx-background-radius: 8; -fx-padding: 8 14;" +
-                "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+        addTableBtn = new Button("+ Add Table");
         addTableBtn.setOnAction(e -> addNewTable());
 
-        Button deleteSchemaBtn = new Button("Delete Schema");
-        deleteSchemaBtn.setStyle(
-                "-fx-background-color: transparent; -fx-text-fill: #E88C8C;" +
-                        "-fx-font-size: 12; -fx-font-weight: bold; -fx-cursor: hand;" +
-                        "-fx-border-color: #E88C8C; -fx-border-radius: 6; -fx-padding: 7 12;"
-        );
+        deleteSchemaBtn = new Button("Delete Schema");
         deleteSchemaBtn.setOnAction(e -> confirmDeleteSchema());
 
         titleText = new Text("Edit Schema: " + schemaName);
         titleText.setFont(Font.font("System", FontWeight.BOLD, 20));
-        titleText.setFill(Color.WHITE);
 
         HBox centerBox = new HBox(titleText);
         centerBox.setAlignment(Pos.CENTER);
@@ -79,34 +77,25 @@ public class SchemasEdit extends BorderPane {
         rightBox.setAlignment(Pos.CENTER_RIGHT);
         rightBox.setMaxWidth(Region.USE_PREF_SIZE);
 
-        StackPane topBar = new StackPane();
+        topBar = new StackPane();
         topBar.setPadding(new Insets(18, 24, 18, 24));
-        topBar.setStyle("-fx-background-color: #1C2333;" +
-                "-fx-border-color: #1C2333; -fx-border-width: 0 0 1 0;");
         StackPane.setAlignment(centerBox, Pos.CENTER);
         StackPane.setAlignment(leftBox, Pos.CENTER_LEFT);
         StackPane.setAlignment(rightBox, Pos.CENTER_RIGHT);
         topBar.getChildren().addAll(centerBox, leftBox, rightBox);
 
-        TextField nameField = new TextField(schemaName);
+        nameField = new TextField(schemaName);
         nameField.setPromptText("Schema name...");
-        nameField.setStyle("-fx-background-color: white; -fx-border-color: #DADFE6;" +
-                "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-font-size: 13;");
         nameField.setPrefWidth(220);
 
-        Button renameBtn = new Button("Rename");
-        renameBtn.setStyle("-fx-background-color: #1C2333; -fx-text-fill: white;" +
-                "-fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 6;" +
-                "-fx-cursor: hand; -fx-padding: 8 14;");
+        renameBtn = new Button("Rename");
         renameBtn.setOnAction(e -> renameSchema(nameField.getText().trim()));
 
-        HBox renameRow = new HBox(8, nameField, renameBtn);
+        renameRow = new HBox(8, nameField, renameBtn);
         renameRow.setAlignment(Pos.CENTER_LEFT);
         renameRow.setPadding(new Insets(14, 20, 16, 20));
-        renameRow.setStyle("-fx-background-color: white;");
 
-        VBox header = new VBox(0, topBar, renameRow);
-        header.setStyle("-fx-border-color: #E2E6EF; -fx-border-width: 0 0 1 0;");
+        header = new VBox(0, topBar, renameRow);
 
         tablesGrid.setPadding(new Insets(0));
 
@@ -122,6 +111,46 @@ public class SchemasEdit extends BorderPane {
 
         loadTableOrder();
         rebuildTableList();
+
+        applyTheme();
+        Theme.registerThemeListener(this, this::applyTheme);
+    }
+
+    private void applyTheme() {
+        Platform.runLater(() -> {
+            setStyle("-fx-background-color: " + Theme.colour2 + ";");
+
+            topBar.setStyle("-fx-background-color: " + Theme.colourDark + ";" +
+                    "-fx-border-color: " + Theme.colourDark + "; -fx-border-width: 0 0 1 0;");
+            titleText.setFill(Color.WHITE);
+
+            backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
+                    "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
+                    "-fx-background-radius: 8; -fx-padding: 8 16;" +
+                    "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+
+            addTableBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
+                    "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
+                    "-fx-background-radius: 8; -fx-padding: 8 14;" +
+                    "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+
+            deleteSchemaBtn.setStyle(
+                    "-fx-background-color: transparent; -fx-text-fill: " + RED + ";" +
+                            "-fx-font-size: 12; -fx-font-weight: bold; -fx-cursor: hand;" +
+                            "-fx-border-color: " + RED + "; -fx-border-radius: 6; -fx-padding: 7 12;"
+            );
+
+            renameRow.setStyle("-fx-background-color: " + Theme.colour1 + ";");
+            header.setStyle("-fx-border-color: " + Theme.colour3 + "; -fx-border-width: 0 0 1 0;");
+
+            nameField.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-border-color: " + Theme.colour3 + ";" +
+                    "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-font-size: 13;" +
+                    "-fx-text-fill: " + Theme.colour6 + ";");
+
+            renameBtn.setStyle("-fx-background-color: " + Theme.colourDark + "; -fx-text-fill: white;" +
+                    "-fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 6;" +
+                    "-fx-cursor: hand; -fx-padding: 8 14;");
+        });
     }
 
     private void renameSchema(String newName) {

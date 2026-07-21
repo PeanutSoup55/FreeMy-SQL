@@ -1,9 +1,11 @@
 package GUI.Schemas;
 
 import GUI.Schemas.SchemasRoot;
+import GUI.Settings.Theme;
 import Objects.Field;
 import Objects.Table;
 import globalfuncs.db;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -21,6 +23,8 @@ import java.util.List;
 
 public class TableEdit extends VBox {
 
+    private static final String ACCENT_BLUE = "#6E9BFF";
+
     private final SchemasRoot root;
     private final String schemaName;
     private final BorderPane hostPane;
@@ -32,6 +36,14 @@ public class TableEdit extends VBox {
     private final VBox fieldsContainer;
     private final List<FieldEntry> fieldEntries = new ArrayList<>();
     final ObservableList<String> availablePKs = FXCollections.observableArrayList();
+
+    // --- elements needing re-styling on theme change ---
+    private Button backBtn;
+    private Text title;
+    private VBox pkCard;
+    private Label pkBadge;
+    private Button addFieldBtn;
+    private Button saveBtn;
 
     public TableEdit(SchemasRoot root, String schemaName, Table table, List<String> schemaPKList) {
         this(root, root, schemaName, table, schemaPKList);
@@ -47,22 +59,16 @@ public class TableEdit extends VBox {
 
         setSpacing(10);
         setPadding(new Insets(14));
-        setStyle("-fx-background-color: #1C2333;");
         setPrefWidth(400);
         setMaxWidth(400);
 
-        Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
-                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
-                "-fx-background-radius: 8; -fx-padding: 8 16;" +
-                "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+        backBtn = new Button("← Back");
         backBtn.setOnAction(e -> {
             hostPane.setRight(null);
         });
 
-        Text title = new Text("Edit Table: " + table.getName());
+        title = new Text("Edit Table: " + table.getName());
         title.setFont(Font.font("System", FontWeight.BOLD, 15));
-        title.setFill(Color.web("#EDEFF4"));
         title.setWrappingWidth(370);
 
         VBox header = new VBox(4, backBtn, title);
@@ -70,9 +76,6 @@ public class TableEdit extends VBox {
         tableNameField = new TextField(table.getName());
         tableNameField.setPromptText("Table Name...");
         tableNameField.setMaxWidth(Double.MAX_VALUE);
-        tableNameField.setStyle("-fx-background-color: #1F2330; -fx-border-color: #343B4D;" +
-                "-fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #EDEFF4;" +
-                "-fx-font-size: 13; -fx-padding: 8 10;");
 
         Field pkField = table.getFields().stream()
                 .filter(Field::isPrimary)
@@ -84,11 +87,9 @@ public class TableEdit extends VBox {
         pkNameField.setPromptText("Primary Key...");
         pkNameField.setDisable(true);
         pkNameField.setMaxWidth(Double.MAX_VALUE);
-        pkNameField.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;" +
-                "-fx-text-fill: #B7BDCC; -fx-font-size: 12; -fx-padding: 0;");
 
-        Label pkBadge = new Label("PK");
-        pkBadge.setStyle("-fx-background-color: #6E9BFF; -fx-text-fill: #14171F;" +
+        pkBadge = new Label("PK");
+        pkBadge.setStyle("-fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: #14171F;" +
                 "-fx-background-radius: 3; -fx-font-size: 9; -fx-font-weight: bold;" +
                 "-fx-padding: 2 6;");
 
@@ -96,17 +97,13 @@ public class TableEdit extends VBox {
         pkTypeBox.setValue(pkField != null ? normalizeType(pkField.getType()) : "INT");
         pkTypeBox.setPrefWidth(130);
         pkTypeBox.setDisable(true);
-        pkTypeBox.setStyle("-fx-background-color: #2A2F3F; -fx-text-fill: #8B92A6;" +
-                "-fx-font-size: 11; -fx-background-radius: 5;");
 
         HBox pkNameRow = new HBox(6, pkNameField, pkBadge);
         pkNameRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(pkNameField, Priority.ALWAYS);
 
-        VBox pkCard = new VBox(6, pkNameRow, pkTypeBox);
+        pkCard = new VBox(6, pkNameRow, pkTypeBox);
         pkCard.setPadding(new Insets(10, 12, 10, 12));
-        pkCard.setStyle("-fx-background-color: #1B1E29; -fx-background-radius: 7;" +
-                "-fx-border-color: #262B3A; -fx-border-radius: 7; -fx-border-width: 1;");
 
         // --- Field list ---
         fieldsContainer = new VBox(8);
@@ -119,12 +116,8 @@ public class TableEdit extends VBox {
 
         VBox fieldsBlock = new VBox(8, pkCard, fieldsContainer);
 
-        Button addFieldBtn = new Button("+ Add Field");
+        addFieldBtn = new Button("+ Add Field");
         addFieldBtn.setMaxWidth(Double.MAX_VALUE);
-        addFieldBtn.setStyle("-fx-background-color: #232838; -fx-text-fill: #6E9BFF;" +
-                "-fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 6;" +
-                "-fx-border-color: #343B4D; -fx-border-radius: 6; -fx-border-width: 1;" +
-                "-fx-cursor: hand; -fx-padding: 9 0;");
         addFieldBtn.setOnAction(e -> addFieldEntry(null));
 
         VBox card = new VBox(10, fieldsBlock, addFieldBtn);
@@ -136,20 +129,58 @@ public class TableEdit extends VBox {
         scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
-        Button saveBtn = new Button("Save Changes");
+        saveBtn = new Button("Save Changes");
         saveBtn.setMaxWidth(Double.MAX_VALUE);
-        saveBtn.setStyle("-fx-background-color: #6E9BFF; -fx-text-fill: #14171F;" +
-                "-fx-font-size: 13; -fx-font-weight: bold; -fx-background-radius: 6;" +
-                "-fx-cursor: hand; -fx-padding: 10 0;");
         saveBtn.setOnAction(e -> saveChanges());
 
         getChildren().addAll(header, tableNameField, scroll, saveBtn);
+
+        applyTheme();
+        Theme.registerThemeListener(this, this::applyTheme);
+    }
+
+    private void applyTheme() {
+        Platform.runLater(() -> {
+            setStyle("-fx-background-color: " + Theme.colourDark + ";");
+
+            backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
+                    "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
+                    "-fx-background-radius: 8; -fx-padding: 8 16;" +
+                    "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+
+            title.setFill(Color.web(Theme.colour6));
+
+            tableNameField.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-border-color: " + Theme.colour3 + ";" +
+                    "-fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: " + Theme.colour6 + ";" +
+                    "-fx-font-size: 13; -fx-padding: 8 10;");
+
+            pkNameField.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;" +
+                    "-fx-text-fill: " + Theme.colour7 + "; -fx-font-size: 12; -fx-padding: 0;");
+
+            pkTypeBox.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-text-fill: " + Theme.colour7 + ";" +
+                    "-fx-font-size: 11; -fx-background-radius: 5;");
+
+            pkCard.setStyle("-fx-background-color: " + Theme.colour2 + "; -fx-background-radius: 7;" +
+                    "-fx-border-color: " + Theme.colour3 + "; -fx-border-radius: 7; -fx-border-width: 1;");
+
+            addFieldBtn.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-text-fill: " + ACCENT_BLUE + ";" +
+                    "-fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 6;" +
+                    "-fx-border-color: " + Theme.colour3 + "; -fx-border-radius: 6; -fx-border-width: 1;" +
+                    "-fx-cursor: hand; -fx-padding: 9 0;");
+
+            saveBtn.setStyle("-fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: #14171F;" +
+                    "-fx-font-size: 13; -fx-font-weight: bold; -fx-background-radius: 6;" +
+                    "-fx-cursor: hand; -fx-padding: 10 0;");
+
+            for (FieldEntry fe : fieldEntries) fe.applyTheme();
+        });
     }
 
     private void addFieldEntry(Field prefill) {
         FieldEntry fe = new FieldEntry(this, prefill);
         fieldEntries.add(fe);
         fieldsContainer.getChildren().add(fe);
+        fe.applyTheme();
     }
 
     void removeField(FieldEntry fe) {
@@ -200,27 +231,23 @@ public class TableEdit extends VBox {
         private final TextField nameField;
         private final ComboBox<String> typeBox;
         private final ComboBox<String> refBox;
+        private final Button removeBtn;
         private final String originalName;
+        private final boolean hadRef;
 
         FieldEntry(TableEdit parent, Field prefill) {
             setSpacing(6);
             setPadding(new Insets(10, 12, 10, 12));
-            setStyle("-fx-background-color: #1B1E29; -fx-background-radius: 7;" +
-                    "-fx-border-color: #262B3A; -fx-border-radius: 7; -fx-border-width: 1;");
 
             this.originalName = prefill != null ? prefill.getName() : null;
 
             nameField = new TextField(prefill != null ? prefill.getName() : "");
             nameField.setPromptText("Field Name...");
             nameField.setMaxWidth(Double.MAX_VALUE);
-            nameField.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;" +
-                    "-fx-text-fill: #EDEFF4; -fx-font-size: 13; -fx-padding: 0;");
 
             typeBox = SchemasAdd.greenCombo(FXCollections.observableArrayList(SchemasAdd.SQL_TYPES));
             typeBox.setPromptText("Type");
             typeBox.setMaxWidth(Double.MAX_VALUE);
-            typeBox.setStyle("-fx-background-color: #2A2F3F; -fx-text-fill: #EDEFF4;" +
-                    "-fx-font-size: 11; -fx-background-radius: 5;");
             if (prefill != null && prefill.getType() != null) {
                 typeBox.setValue(normalizeType(prefill.getType()));
             }
@@ -228,18 +255,12 @@ public class TableEdit extends VBox {
             refBox = SchemasAdd.greenCombo(parent.availablePKs);
             refBox.setPromptText("No reference");
             refBox.setMaxWidth(Double.MAX_VALUE);
-            refBox.setStyle("-fx-background-color: #2A2F3F; -fx-text-fill: #8B92A6;" +
-                    "-fx-font-size: 11; -fx-background-radius: 5;");
-            if (prefill != null && prefill.getReference() != null && !prefill.getReference().isEmpty()) {
+            hadRef = prefill != null && prefill.getReference() != null && !prefill.getReference().isEmpty();
+            if (hadRef) {
                 refBox.setValue(prefill.getReference());
-                refBox.setStyle("-fx-background-color: #2A2F3F; -fx-text-fill: #EDEFF4;" +
-                        "-fx-font-size: 11; -fx-background-radius: 5;");
             }
 
-            Button removeBtn = new Button("Remove");
-            removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6B7286;" +
-                    "-fx-cursor: hand; -fx-font-size: 10; -fx-padding: 4 0 0 0;" +
-                    "-fx-underline: true;");
+            removeBtn = new Button("Remove");
             removeBtn.setOnAction(e -> parent.removeField(this));
 
             HBox typeRefRow = new HBox(6, typeBox, refBox);
@@ -252,13 +273,31 @@ public class TableEdit extends VBox {
             getChildren().addAll(nameField, typeRefRow, bottomRow);
         }
 
+        void applyTheme() {
+            setStyle("-fx-background-color: " + Theme.colour2 + "; -fx-background-radius: 7;" +
+                    "-fx-border-color: " + Theme.colour3 + "; -fx-border-radius: 7; -fx-border-width: 1;");
+
+            nameField.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;" +
+                    "-fx-text-fill: " + Theme.colour6 + "; -fx-font-size: 13; -fx-padding: 0;");
+
+            typeBox.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-text-fill: " + Theme.colour6 + ";" +
+                    "-fx-font-size: 11; -fx-background-radius: 5;");
+
+            refBox.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-text-fill: " +
+                    (hadRef ? Theme.colour6 : Theme.colour7) + "; -fx-font-size: 11; -fx-background-radius: 5;");
+
+            removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + Theme.colour7 + ";" +
+                    "-fx-cursor: hand; -fx-font-size: 10; -fx-padding: 4 0 0 0;" +
+                    "-fx-underline: true;");
+        }
+
         Field buildField() {
             String name = nameField.getText().trim();
             String type = typeBox.getValue();
             if (name.isEmpty()) { SchemasAdd.warn("Field name cannot be empty."); return null; }
             if (type == null) { SchemasAdd.warn("Select a type for field: " + name); return null; }
             Field f = new Field(refBox.getValue(), false, type, name);
-            if (originalName != null) f.setOldName(originalName); // ADD THIS
+            if (originalName != null) f.setOldName(originalName);
             return f;
         }
     }
