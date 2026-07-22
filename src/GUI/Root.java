@@ -3,6 +3,7 @@ package GUI;
 import GUI.Schemas.*;
 import GUI.Schemas.LoginGen.LoginGen;
 import GUI.Settings.Settings;
+import GUI.Settings.SvgIcon;
 import GUI.Settings.Theme;
 import Objects.*;
 import SSH.SSHConnection;
@@ -12,10 +13,9 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -26,26 +26,18 @@ import javafx.scene.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 public class Root extends BorderPane {
 
     private String  activeMenu = "Schemas";
     private final String[] LABELS = {"Schemas", "Query", "Credentials", "Logs", "SSH"};
-    private final String[] ICONS  = {
-            "assets/schema.png",
-            "assets/query.png",
-            "assets/creds.png",
-            "assets/logs.png",
-            "assets/ssh.png"
-    };
-    private final String[] ICONS_DARK = {
-            "assets/schema2.png",
-            "assets/query2.png",
-            "assets/creds2.png",
-            "assets/logs2.png",
-            "assets/ssh2.png"
+    private final String[] ICONS = {
+            "assets/schema.svg",
+            "assets/query.svg",
+            "assets/creds.svg",
+            "assets/logs.svg",
+            "assets/ssh.svg"
     };
     private SchemasRoot schemasRoot;
     private HBox selectedTab;
@@ -86,20 +78,15 @@ public class Root extends BorderPane {
         avatarRow.setPadding(new Insets(10, 0, 10, 0));
         rail.getChildren().add(avatarRow);
 
-        String[] activeIcons = Theme.isLight ? ICONS_DARK : ICONS;
         for (int i = 0; i < LABELS.length; i++) {
-            rail.getChildren().add(createRailIcon(activeIcons[i], LABELS[i]));
+            rail.getChildren().add(createRailIcon(ICONS[i], LABELS[i]));
         }
 
         Region railSpacer = new Region();
         VBox.setVgrow(railSpacer, Priority.ALWAYS);
         rail.getChildren().add(railSpacer);
 
-        if (Theme.isLight){
-            rail.getChildren().add(createRailIcon("assets/settings2.png", "Settings"));
-        }else {
-            rail.getChildren().add(createRailIcon("assets/settings.png", "Settings"));
-        }
+        rail.getChildren().add(createRailIcon("assets/settings.svg", "Settings"));
 
         // SCHEMA TREE PANEL - only shown when Schemas is active
         VBox schemaPanel = new VBox();
@@ -126,12 +113,9 @@ public class Root extends BorderPane {
     }
 
     private HBox createRailIcon(String iconPath, String label) {
-        ImageView iv = new ImageView(new Image(
-                Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(iconPath))));
-        iv.setFitWidth(20);
-        iv.setFitHeight(20);
+        Node icon = SvgIcon.load(iconPath, 20, Theme.colour6);
 
-        StackPane iconWrap = new StackPane(iv);
+        StackPane iconWrap = new StackPane(icon);
         iconWrap.setPrefSize(36, 36);
         boolean isActive = label.equals(activeMenu);
         iconWrap.setStyle(isActive
@@ -190,29 +174,28 @@ public class Root extends BorderPane {
         toolbar.setAlignment(Pos.CENTER_LEFT);
         toolbar.setStyle("-fx-background-color: "+ Theme.colour1 + "; -fx-border-color: transparent;");
 
-        Button refreshBtn  = makeToolBtn("/assets/refresh.png",  "Refresh");
-        Button collapseBtn = makeToolBtn("/assets/collapse.png", "Collapse all");
-        Button sortBtn     = makeToolBtn("/assets/sort.png",     "Sort A→Z / Z→A");
+        SvgIcon.class.getClassLoader().getResource("assets/refresh.svg");
+        Button refreshBtn  = makeToolBtn("/assets/refresh.svg",  "Refresh");
+        Button collapseBtn = makeToolBtn("/assets/collapse.svg", "Collapse all");
+        Button sortBtn     = makeToolBtn("/assets/sort.svg",     "Sort A→Z / Z→A");
+        Button newBtn = makeToolBtn("/assets/add.svg", "New schema");
 
-        // CHANGED: was schemasRoot.refresh() -> now refreshData() + rebuild tree + createTables
         refreshBtn.setOnMouseClicked(e -> {
             schemasRoot.refreshData();
             schemasRoot.createTables();
             createSide();
         });
 
-        collapseBtn.setOnAction(e -> {
+        collapseBtn.setOnMouseClicked(e -> {
             for (VBox wrapper : schemaWrappers) {
                 if (wrapper.getChildren().size() > 1) {
                     Node tableList = wrapper.getChildren().get(1);
                     if (tableList.isVisible()) {
                         tableList.setVisible(false);
                         tableList.setManaged(false);
-                        HBox row        = (HBox) wrapper.getChildren().get(0);
+                        HBox row        = (HBox) wrapper.getChildren().getFirst();
                         StackPane caret = (StackPane) row.getChildren().get(0);
-                        ((ImageView) caret.getChildren().getFirst()).setImage(
-                                new Image(getClass().getResourceAsStream("/assets/right.png"))
-                        );
+                        SvgIcon.setContent((Group) caret.getChildren().getFirst(), "/assets/right.svg", 10, Theme.colour5);
                         ((Label) row.getChildren().get(3)).setVisible(false);
                     }
                 }
@@ -228,7 +211,6 @@ public class Root extends BorderPane {
         Region tbSpacer = new Region();
         HBox.setHgrow(tbSpacer, Priority.ALWAYS);
 
-        Button newBtn = makeToolBtn("/assets/add.png", "New schema");
         newBtn.setOnAction(e -> setCenter(new SchemasAdd(schemasRoot, () -> {
             schemasRoot.refreshData();
             schemasRoot.createTables();
@@ -247,10 +229,7 @@ public class Root extends BorderPane {
                         "-fx-border-color: transparent;"
         );
 
-        ImageView searchIcon = new ImageView(new Image(getClass().getResourceAsStream("/assets/search.png")));
-        searchIcon.setFitWidth(13);
-        searchIcon.setFitHeight(13);
-        searchIcon.setPreserveRatio(true);
+        Node searchIcon = SvgIcon.load("/assets/search.svg", 13, Theme.colour5);
 
         TextField searchField = new TextField();
         searchField.setPromptText("Filter schemas…");
@@ -292,7 +271,7 @@ public class Root extends BorderPane {
         searchField.textProperty().addListener((obs, oldVal, query) -> {
             String lc = query.toLowerCase().trim();
             for (VBox wrapper : schemaWrappers) {
-                HBox row = (HBox) wrapper.getChildren().get(0);
+                HBox row = (HBox) wrapper.getChildren().getFirst();
                 String name = (String) row.getUserData();
                 boolean show = lc.isEmpty() || name.toLowerCase().contains(lc);
                 wrapper.setVisible(show);
@@ -345,10 +324,7 @@ public class Root extends BorderPane {
             setCenter(schemasRoot);
         })));
 
-        ImageView footerIcon = new ImageView(new Image(getClass().getResourceAsStream("/assets/add.png")));
-        footerIcon.setFitWidth(13);
-        footerIcon.setFitHeight(13);
-        footerIcon.setPreserveRatio(true);
+        Node footerIcon = SvgIcon.load("/assets/add.svg", 13, Theme.colour5);
 
         Label footerLabel = new Label("New schema");
         footerLabel.setStyle("-fx-text-fill: " + Theme.colour5 + ";");
@@ -373,12 +349,8 @@ public class Root extends BorderPane {
 
     // ── Toolbar button ─────────────────────────────────────────────────
     private Button makeToolBtn(String iconPath, String tooltipText) {
-        ImageView icon = new ImageView(
-                new Image(getClass().getResourceAsStream(iconPath))
-        );
-        icon.setFitWidth(14);
-        icon.setFitHeight(14);
-        icon.setPreserveRatio(true);
+        Node icon = SvgIcon.load(iconPath, 14, Theme.colour6);
+
 
         Button btn = new Button();
         btn.setGraphic(icon);
@@ -406,13 +378,7 @@ public class Root extends BorderPane {
 
     // ── generateTab ────────────────────────────────────────────────────
     private VBox generateTab(Schema schema, boolean remote) {
-        Image imgRight = new Image(getClass().getResourceAsStream("/assets/right.png"));
-        Image imgDown  = new Image(getClass().getResourceAsStream("/assets/down.png"));
-
-        ImageView arrowIcon = new ImageView(imgRight);
-        arrowIcon.setFitWidth(10);
-        arrowIcon.setFitHeight(10);
-        arrowIcon.setPreserveRatio(true);
+        Group arrowIcon = SvgIcon.load("/assets/right.svg", 10, Theme.colour5);
 
         StackPane caretBtn = new StackPane(arrowIcon);
         caretBtn.setPrefWidth(28);
@@ -616,14 +582,14 @@ public class Root extends BorderPane {
 
         Runnable expand = () -> {
             populateIfEmpty.run();
-            arrowIcon.setImage(imgDown);
+            SvgIcon.setContent(arrowIcon, "/assets/down.svg", 10, Theme.colour5);
             badge.setVisible(true);
             tableList.setVisible(true);
             tableList.setManaged(true);
         };
 
         Runnable collapse = () -> {
-            arrowIcon.setImage(imgRight);
+            SvgIcon.setContent(arrowIcon, "/assets/right.svg", 10, Theme.colour5);
             badge.setVisible(false);
             tableList.setVisible(false);
             tableList.setManaged(false);
@@ -678,7 +644,7 @@ public class Root extends BorderPane {
                         new Thread(() -> {
                             String result = db.CloneSchemaFromRemote(schema.getName());
                             Platform.runLater(() -> {
-                                if (result != null && !result.toLowerCase().contains("fail") && !result.toLowerCase().contains("error")) {
+                                if (!result.toLowerCase().contains("fail") && !result.toLowerCase().contains("error")) {
                                     SchemasRoot.markRemoteLinked(schema.getName());
                                 }
                                 schemasRoot.refreshData();
