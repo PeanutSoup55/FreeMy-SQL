@@ -203,6 +203,18 @@ public class Theme extends BorderPane {
         }
     }
 
+    public static String lightestNonWhite() {
+        String[] all = {colour1, colour2, colour3, colour4, colour5, colour6, colour7};
+        String best = null;
+        double bestLum = -1;
+        for (String hex : all) {
+            if (hex.equalsIgnoreCase("#FFFFFF")) continue;
+            double lum = luminance(hex);
+            if (lum > bestLum) { bestLum = lum; best = hex; }
+        }
+        return best != null ? best : colour1;
+    }
+
     private static double luminance(String hex) {
         javafx.scene.paint.Color c = javafx.scene.paint.Color.web(hex);
         return 0.299 * c.getRed() + 0.587 * c.getGreen() + 0.114 * c.getBlue();

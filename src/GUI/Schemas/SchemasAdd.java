@@ -1,10 +1,12 @@
 package GUI.Schemas;
 
 import GUI.Schemas.SchemasRoot;
+import GUI.Settings.Theme;
 import Objects.Field;
 import Objects.Schema;
 import Objects.Table;
 import globalfuncs.db;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -30,6 +32,15 @@ public class SchemasAdd extends BorderPane {
     private final List<TableEntry> tableEntries = new ArrayList<>();
     final ObservableList<String> availablePKs = FXCollections.observableArrayList();
 
+    // --- elements that need re-styling on theme change ---
+    private final BorderPane topBar;
+    private final Text       title;
+    private final Button     backBtn;
+    private final VBox       nameSection;
+    private final Label      nameLabel;
+    private final Button     addTableBtn;
+    private final HBox       saveBar;
+
     static final List<String> SQL_TYPES = List.of(
             "INT", "BIGINT", "SMALLINT", "TINYINT",
             "VARCHAR(50)", "VARCHAR(100)", "VARCHAR(255)",
@@ -43,19 +54,12 @@ public class SchemasAdd extends BorderPane {
         this.root = root;
         this.onDone = onDone;
 
-        setStyle("-fx-background-color: #F4F5F9;");
-
         // ── Header: dark topbar, matches SchemasEdit / LoginGen ────────
-        Button backBtn = new Button("← Back");
-        backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
-                "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
-                "-fx-background-radius: 8; -fx-padding: 8 16;" +
-                "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+        backBtn = new Button("← Back");
         backBtn.setOnAction(e -> onDone.run());
 
-        Text title = new Text("Create New Schema");
+        title = new Text("Create New Schema");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.WHITE);
 
         HBox leftBox = new HBox(backBtn);
         leftBox.setAlignment(Pos.CENTER_LEFT);
@@ -66,36 +70,30 @@ public class SchemasAdd extends BorderPane {
         HBox rightSpacer = new HBox();
         rightSpacer.prefWidthProperty().bind(leftBox.widthProperty());
 
-        BorderPane topBar = new BorderPane();
+        topBar = new BorderPane();
         topBar.setPadding(new Insets(18, 24, 18, 24));
-        topBar.setStyle("-fx-background-color: #1C2333;" +
-                "-fx-border-color: #1C2333; -fx-border-width: 0 0 1 0;");
         topBar.setLeft(leftBox);
         topBar.setCenter(centerBox);
         topBar.setRight(rightSpacer);
 
         // ── Schema name row ──────────────────────────────────────────
-        Label nameLabel = new Label("Schema Name");
+        nameLabel = new Label("Schema Name");
         nameLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
-        nameLabel.setTextFill(Color.web("#1C2333"));
 
         schemaNameField = new TextField();
         schemaNameField.setPromptText("e.g. inventory_db");
         schemaNameField.setMaxWidth(380);
-        schemaNameField.setStyle(fieldStyle());
 
-        VBox nameSection = new VBox(6, nameLabel, schemaNameField);
+        nameSection = new VBox(6, nameLabel, schemaNameField);
         nameSection.setPadding(new Insets(18, 24, 18, 24));
-        nameSection.setStyle("-fx-background-color: white; -fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
 
         VBox header = new VBox(0, topBar, nameSection);
 
         // ── Tables section ───────────────────────────────────────────
         tableCountLabel = new Label();
         tableCountLabel.setFont(Font.font("System", FontWeight.BOLD, 13));
-        tableCountLabel.setTextFill(Color.web("#5A6472"));
 
-        Button addTableBtn = outlineBtn("+ Add Table");
+        addTableBtn = outlineBtn("+ Add Table");
         addTableBtn.setOnAction(e -> addTableEntry());
 
         Region tablesSpacer = new Region();
@@ -123,10 +121,9 @@ public class SchemasAdd extends BorderPane {
         schemaNameField.textProperty().addListener((obs, o, n) ->
                 saveBtn.setDisable(n.trim().isEmpty()));
 
-        HBox saveBar = new HBox(saveBtn);
+        saveBar = new HBox(saveBtn);
         saveBar.setAlignment(Pos.CENTER_RIGHT);
         saveBar.setPadding(new Insets(14, 24, 14, 24));
-        saveBar.setStyle("-fx-background-color: white; -fx-border-color: #EEEEEE; -fx-border-width: 1 0 0 0;");
 
         setTop(header);
         setCenter(scroll);
@@ -134,6 +131,34 @@ public class SchemasAdd extends BorderPane {
 
         addTableEntry();
         refreshTableCount();
+
+        applyTheme();
+        Theme.registerThemeListener(this, this::applyTheme);
+    }
+
+    private void applyTheme() {
+        Platform.runLater(() -> {
+            setStyle("-fx-background-color: white;");
+            topBar.setStyle("-fx-background-color: " + Theme.colourDark + ";" +
+                    "-fx-border-color: " + Theme.colourDark + "; -fx-border-width: 0 0 1 0;");
+            title.setFill(Color.WHITE);
+
+            backBtn.setStyle("-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;" +
+                    "-fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12;" +
+                    "-fx-background-radius: 8; -fx-padding: 8 16;" +
+                    "-fx-border-color: rgba(255,255,255,0.28); -fx-border-radius: 8; -fx-border-width: 1;");
+
+            nameSection.setStyle("-fx-background-color: " + Theme.colour1 + ";" +
+                    "-fx-border-color: " + Theme.colour3 + "; -fx-border-width: 0 0 1 0;");
+            nameLabel.setTextFill(Color.web(Theme.colour6));
+            schemaNameField.setStyle(fieldStyle());
+
+            tableCountLabel.setTextFill(Color.BLACK);
+            addTableBtn.setStyle(outlineBtnStyle());
+
+            saveBar.setStyle("-fx-background-color: white;");
+            saveBtn.setStyle(filledBtnStyle());
+        });
     }
 
     private void addTableEntry() {
@@ -181,31 +206,46 @@ public class SchemasAdd extends BorderPane {
     }
 
     static String fieldStyle() {
-        return "-fx-background-color: white; -fx-background-radius: 8;" +
-                "-fx-border-color: #E2E6E2; -fx-border-radius: 8;" +
+        return "-fx-background-color: " + Theme.colour1 + "; -fx-background-radius: 8;" +
+                "-fx-border-color: " + Theme.colour3 + "; -fx-border-radius: 8;" +
+                "-fx-text-fill: " + Theme.colour6 + ";" +
                 "-fx-padding: 10 14; -fx-font-size: 13;";
+    }
+
+    static String filledBtnStyle() {
+        return "-fx-background-color: " + Theme.colourDark + "; -fx-text-fill: white;" +
+                "-fx-background-radius: 8; -fx-font-weight: bold;" +
+                "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;";
     }
 
     static Button filledBtn(String label) {
         Button b = new Button(label);
-        b.setStyle("-fx-background-color: #1C2333; -fx-text-fill: white;" +
-                "-fx-background-radius: 8; -fx-font-weight: bold;" +
-                "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
+        b.setStyle(filledBtnStyle());
         return b;
+    }
+
+    // ── modular outline, reused by outlineBtn and TableEntry cards ─────
+    static String outlineStyle(String radius) {
+        return "-fx-border-color: " + Theme.colourDark + "; -fx-border-width: 1;" +
+                "-fx-border-radius: " + radius + ";";
+    }
+
+    static String outlineBtnStyle() {
+        return "-fx-background-color: " + Theme.colour1 + "; -fx-text-fill: " + Theme.colour6 + ";" +
+                outlineStyle("8") +
+                "-fx-background-radius: 8; -fx-background-insets: 0; -fx-font-weight: bold;" +
+                "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;";
     }
 
     static Button outlineBtn(String label) {
         Button b = new Button(label);
-        b.setStyle("-fx-background-color: white; -fx-text-fill: #1C2333;" +
-                "-fx-border-color: #1C2333; -fx-border-radius: 8;" +
-                "-fx-background-radius: 8; -fx-font-weight: bold;" +
-                "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
+        b.setStyle(outlineBtnStyle());
         return b;
     }
 
     static ComboBox<String> greenCombo(ObservableList<String> items) {
         ComboBox<String> cb = new ComboBox<>(items);
-        cb.setStyle("-fx-background-color: #1C2333; -fx-background-radius: 8;" +
+        cb.setStyle("-fx-background-color: " + Theme.colourDark + "; -fx-background-radius: 8;" +
                 "-fx-cursor: hand; -fx-padding: 2 4;");
         cb.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(String s, boolean empty) {
@@ -235,8 +275,8 @@ public class SchemasAdd extends BorderPane {
         TableEntry(SchemasAdd parent) {
             this.parent = parent;
             setSpacing(0);
-            setStyle("-fx-background-color: white; -fx-background-radius: 12;" +
-                    "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 14, 0, 0, 3);");
+            setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-background-radius: 12;" +
+                    outlineStyle("12"));
 
             tableNameField = new TextField();
             tableNameField.setPromptText("Table Name...");
@@ -252,7 +292,7 @@ public class SchemasAdd extends BorderPane {
 
             HBox nameRow = new HBox(tableNameField, removeTableBtn);
             nameRow.setAlignment(Pos.CENTER_LEFT);
-            nameRow.setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
+            nameRow.setStyle("-fx-border-color: " + Theme.colour3 + "; -fx-border-width: 0 0 1 0;");
 
             pkNameField = new TextField();
             pkNameField.setPromptText("Primary Key...");
@@ -268,7 +308,7 @@ public class SchemasAdd extends BorderPane {
             HBox pkRow = new HBox(pkNameField, pkTypeBox);
             pkRow.setAlignment(Pos.CENTER_LEFT);
             pkRow.setPadding(new Insets(0, 14, 0, 0));
-            pkRow.setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
+            pkRow.setStyle("-fx-border-color: " + Theme.colour3 + "; -fx-border-width: 0 0 1 0;");
 
             fieldsContainer = new VBox(0);
 
@@ -327,7 +367,7 @@ public class SchemasAdd extends BorderPane {
         FieldEntry(TableEntry parent) {
             this.parent = parent;
             setAlignment(Pos.CENTER_LEFT);
-            setStyle("-fx-border-color: #EEEEEE; -fx-border-width: 0 0 1 0;");
+            setStyle("-fx-border-color: " + Theme.colour3 + "; -fx-border-width: 0 0 1 0;");
             setPadding(new Insets(0, 14, 0, 0));
 
             nameField = new TextField();
