@@ -1,6 +1,7 @@
 package GUI.Schemas;
 
 import GUI.Schemas.SchemasRoot;
+import GUI.Settings.Theme;
 import Objects.Field;
 import Objects.Table;
 import globalfuncs.dbcrud;
@@ -47,7 +48,7 @@ public class TableCRUD extends VBox {
         }
 
         setSpacing(0);
-        setStyle("-fx-background-color: #F4F6FA;");
+        setStyle("-fx-background-color: " + Theme.colour2 + ";");
         getChildren().addAll(buildHeader(), buildSplit());
         loadData();
     }
@@ -62,7 +63,7 @@ public class TableCRUD extends VBox {
 
         Text title = new Text(table.getName());
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.WHITE);
+        title.setFill(Color.web(Theme.colour4));
 
         Label badge = new Label(schemaName);
         badge.setStyle("-fx-background-color: rgba(255,255,255,0.14); -fx-text-fill: white;" +
@@ -77,8 +78,7 @@ public class TableCRUD extends VBox {
 
         StackPane header = new StackPane();
         header.setPadding(new Insets(18, 24, 18, 24));
-        header.setStyle("-fx-background-color: #1C2333;" +
-                "-fx-border-color: #1C2333; -fx-border-width: 0 0 1 0;");
+        header.setStyle("-fx-background-color: " + Theme.colour2 + ";");
         StackPane.setAlignment(centerBox, Pos.CENTER);
         StackPane.setAlignment(leftBox, Pos.CENTER_LEFT);
         header.getChildren().addAll(centerBox, leftBox);
@@ -97,10 +97,10 @@ public class TableCRUD extends VBox {
     private VBox buildDataSection(){
         Label sectionTitle = new Label("Existing Data");
         sectionTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
-        sectionTitle.setTextFill(Color.web("#1C2333"));
+        sectionTitle.setTextFill(Color.web(Theme.colour1));
 
         Button refreshBtn = new Button("↻");
-        refreshBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #1C2333;" +
+        refreshBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + Theme.colour1 + ";" +
                 "-fx-font-size: 16; -fx-cursor: hand;");
         refreshBtn.setOnAction(e -> loadData());
 
@@ -139,13 +139,13 @@ public class TableCRUD extends VBox {
     }
     private VBox buildFormSection(){
         modeLabel.setFont(Font.font("System", FontWeight.BOLD, 15));
-        modeLabel.setTextFill(Color.web("#1C2333"));
+        modeLabel.setTextFill(Color.web(Theme.colour1));
 
         statusLabel.setFont(Font.font("System", 12));
         statusLabel.setWrapText(true);
 
         Button newRowBtn = new Button("+ New Row");
-        newRowBtn.setStyle("-fx-background-color: #1C2333; -fx-text-fill: white;" +
+        newRowBtn.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-text-fill: white;" +
                 "-fx-background-radius: 8; -fx-font-weight: bold;" +
                 "-fx-cursor: hand; -fx-padding: 6 14; -fx-font-size: 12;");
         newRowBtn.setOnAction(e -> clearForm());
@@ -199,7 +199,7 @@ public class TableCRUD extends VBox {
 
             Label nameLabel = new Label(field.getName());
             nameLabel.setFont(Font.font("System", FontWeight.BOLD, 13));
-            nameLabel.setTextFill(isFk ? Color.web("#8B5E3C") : Color.web("#1C2333"));
+            nameLabel.setTextFill(isFk ? Color.web("#8B5E3C") : Color.web(Theme.colour1));
             nameLabel.setMinWidth(140);
             nameLabel.setPrefWidth(140);
 
@@ -222,7 +222,7 @@ public class TableCRUD extends VBox {
                 ComboBox<String> cb = new ComboBox<>(FXCollections.observableArrayList(vals));
                 cb.setPromptText("Select from " + refTbl + "." + refCol + "…");
                 cb.setMaxWidth(Double.MAX_VALUE);
-                cb.setStyle("-fx-background-color: #1C2333; -fx-background-radius: 8; -fx-cursor: hand;");
+                cb.setStyle("-fx-background-color: " + Theme.colour2 + "; -fx-background-radius: 8; -fx-cursor: hand;");
                 cb.setButtonCell(new ListCell<>() {
                     @Override protected void updateItem(String s, boolean empty) {
                         super.updateItem(s, empty);
@@ -339,13 +339,13 @@ public class TableCRUD extends VBox {
 
     private void applyHeaderStyle() {
         Platform.runLater(() -> {
-            dataTable.lookupAll(".column-header-background").forEach(n -> n.setStyle("-fx-background-color: #1C2333;"));
+            dataTable.lookupAll(".column-header-background").forEach(n -> n.setStyle("-fx-background-color: " + Theme.colour2 + ";"));
             dataTable.lookupAll(".column-header").forEach(n -> n.setStyle("-fx-background-color: transparent;" +
                     "-fx-border-color: transparent; -fx-size: 38;"));
-            dataTable.lookupAll(".column-header > .label").forEach(n -> n.setStyle("-fx-text-fill: white; -fx-font-family: Monospace;" +
+            dataTable.lookupAll(".column-header > .label").forEach(n -> n.setStyle("-fx-text-fill: " + Theme.colour4 + "; -fx-font-family: Monospace;" +
                     "-fx-font-size: 12px; -fx-font-weight: bold;" +
                     "-fx-alignment: CENTER-LEFT; -fx-padding: 0 12;"));
-            dataTable.lookupAll(".filler").forEach(n -> n.setStyle("-fx-background-color: #1C2333;"));
+            dataTable.lookupAll(".filler").forEach(n -> n.setStyle("-fx-background-color: " + Theme.colour2 + ";"));
         });
     }
 
@@ -355,7 +355,9 @@ public class TableCRUD extends VBox {
         String pkInfo = pkColIndex >= 0 ? " — " + pkField.getName() + " = " + row[pkColIndex] : "";
         modeLabel.setText("Editing Row" + pkInfo);
         saveBtn.setText("Update Row");
-        saveBtn.setStyle(saveBtn.getStyle().replace("#1C2333", "#3D4C66"));
+        saveBtn.setStyle("-fx-background-color: " + Theme.colour3 + "; -fx-text-fill: white;" +
+                "-fx-background-radius: 8; -fx-font-weight: bold;" +
+                "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
 
         for (Field field : table.getFields()) {
             if (field.isPrimary()) continue;
@@ -380,7 +382,7 @@ public class TableCRUD extends VBox {
         dataTable.getSelectionModel().clearSelection();
         modeLabel.setText("Insert New Row");
         saveBtn.setText("Insert Row");
-        saveBtn.setStyle("-fx-background-color: #1C2333; -fx-text-fill: white;" +
+        saveBtn.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-text-fill: white;" +
                 "-fx-background-radius: 8; -fx-font-weight: bold;" +
                 "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
         formControls.values().forEach(ctrl -> {
@@ -586,7 +588,7 @@ public class TableCRUD extends VBox {
 
     private void setStatus(String msg) {
         statusLabel.setText(msg);
-        statusLabel.setTextFill(Color.web("#1C2333"));
+        statusLabel.setTextFill(Color.web(Theme.colour1));
     }
 
     private void setError(String msg) {
@@ -604,7 +606,7 @@ public class TableCRUD extends VBox {
 
     private static Button filledBtn(String label) {
         Button b = new Button(label);
-        b.setStyle("-fx-background-color: #1C2333; -fx-text-fill: white;" +
+        b.setStyle("-fx-background-color: " + Theme.colour1 + "; -fx-text-fill: white;" +
                 "-fx-background-radius: 8; -fx-font-weight: bold;" +
                 "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
         return b;
@@ -612,8 +614,8 @@ public class TableCRUD extends VBox {
 
     private static Button outlineBtn(String label) {
         Button b = new Button(label);
-        b.setStyle("-fx-background-color: white; -fx-text-fill: #1C2333;" +
-                "-fx-border-color: #1C2333; -fx-border-radius: 8;" +
+        b.setStyle("-fx-background-color: white; -fx-text-fill: " + Theme.colour2 + ";" +
+                "-fx-border-color: " + Theme.colour2 + "; -fx-border-radius: 8;" +
                 "-fx-background-radius: 8; -fx-font-weight: bold;" +
                 "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
         return b;

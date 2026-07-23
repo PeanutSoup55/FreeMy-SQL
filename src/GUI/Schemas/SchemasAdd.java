@@ -139,7 +139,7 @@ public class SchemasAdd extends BorderPane {
     private void applyTheme() {
         Platform.runLater(() -> {
             setStyle("-fx-background-color: white;");
-            topBar.setStyle("-fx-background-color: " + Theme.colourDark + ";" +
+            topBar.setStyle("-fx-background-color: " + Theme.colour2 + ";" +
                     "-fx-border-color: " + Theme.colourDark + "; -fx-border-width: 0 0 1 0;");
             title.setFill(Color.WHITE);
 
@@ -286,7 +286,7 @@ public class SchemasAdd extends BorderPane {
             HBox.setHgrow(tableNameField, Priority.ALWAYS);
 
             Button removeTableBtn = new Button("✕");
-            removeTableBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #BBBBBB;" +
+            removeTableBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + Theme.colour6 + ";" +
                     "-fx-cursor: hand; -fx-font-size: 15; -fx-padding: 10 14;");
             removeTableBtn.setOnAction(e -> parent.removeTable(this));
 
