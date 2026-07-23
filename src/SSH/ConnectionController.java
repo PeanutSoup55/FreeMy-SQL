@@ -74,7 +74,7 @@ public class ConnectionController {
 
                 Platform.runLater(() -> {
                     creds.setTunnel(ConnectionManager.getInstance().getLocalBridgePort(), dUser, dPass);
-                    view.setStatus("Tunnel secured — connection live.", "#1E9E5A", true);
+                    view.setStatus("Tunnel secured: connection live.", "#1E9E5A", true);
                     view.getDisconnectButton().setDisable(false);
                     view.switchToDashboard();
 

@@ -1,5 +1,6 @@
 package SSH;
 
+import GUI.Settings.Theme;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -11,24 +12,16 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 
-/**
- * The SSH portal panel. Wires itself up the moment it is placed on screen —
- * no user action is needed to start the service, and the Main entry point
- * is never touched.
- *
- * Shows a credentials form (with saved profiles) while disconnected, and
- * swaps to a live dashboard (tunnel diagram + server stats) once a
- * connection is established.
- *
- */
+import java.util.ArrayList;
+import java.util.List;
+
 public class SSHConnection extends VBox {
 
-    // --- Palette (light) ---
+    // --- Palette (light) — unchanged, static ---
     private static final String BG        = "#F4F5F9";
     private static final String CARD      = "#FFFFFF";
     private static final String FIELD_BG  = "#F7F8FB";
     private static final String BORDER    = "#E1E5EC";
-    private static final String ACCENT    = "#1C2333";
     private static final String ACCENT_BG = "#EAF0FD";
     private static final String TEXT      = "#1C2230";
     private static final String MUTED     = "#6B7280";
@@ -86,6 +79,9 @@ public class SSHConnection extends VBox {
     private final Label dbSizeValueLabel         = new Label("Loading…");
     private final Label tableCountValueLabel     = new Label("Loading…");
 
+    // --- accent-colored value labels, tracked so their text-fill can be re-applied on theme change ---
+    private final List<Label> accentValueLabels = new ArrayList<>();
+
     private Timeline uptimeTimeline;
 
     public SSHConnection(Runnable onConnected) {
@@ -100,6 +96,27 @@ public class SSHConnection extends VBox {
         getChildren().add(formView);
 
         new ConnectionController(this, new SSH(), onConnected);
+
+        applyTheme();
+        Theme.registerThemeListener(this, this::applyTheme);
+    }
+
+    private void applyTheme() {
+        Platform.runLater(() -> {
+            styleField(sshHostField); styleField(sshPortField); styleField(sshUserField); styleField(sshPasswordField);
+            styleField(dbHostField);  styleField(dbPortField);  styleField(dbUserField);  styleField(dbPasswordField); styleField(dbNameField);
+            styleField(profileNameField);
+
+            stylePrimaryButton(connectAndSaveButton);
+            styleSecondaryAccentButton(connectButton);
+
+            for (Label l : accentValueLabels) {
+                l.setStyle("-fx-text-fill: " + Theme.colourDark + "; -fx-font-size: 20px; -fx-font-weight: bold;");
+            }
+
+            formDiagram.refreshTheme();
+            dashboardDiagram.refreshTheme();
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -238,8 +255,7 @@ public class SSHConnection extends VBox {
     }
 
     // -------------------------------------------------------------------------
-    // View switching — always reads identity from ConnectionManager, never
-    // from form fields, so a freshly-built panel shows the real connection.
+    // View switching
     // -------------------------------------------------------------------------
 
     public void switchToDashboard() {
@@ -353,11 +369,6 @@ public class SSHConnection extends VBox {
         profileNameField.setText(p.name);
     }
 
-    /**
-     * Saves the current form values under the typed profile name.
-     * Called by the controller when "Connect & Save" is pressed.
-     * Returns false (and saves nothing) if no name was typed.
-     */
     public boolean saveProfileFromForm() {
         String name = profileNameField.getText() == null ? "" : profileNameField.getText().trim();
         if (name.isEmpty()) return false;
@@ -444,7 +455,7 @@ public class SSHConnection extends VBox {
                         "-fx-border-color: " + BORDER + ";" +
                         "-fx-border-radius: 6;" +
                         "-fx-background-radius: 6;" +
-                        "-fx-highlight-fill: " + ACCENT + ";" +
+                        "-fx-highlight-fill: " + Theme.colourDark + ";" +
                         "-fx-padding: 8 10 8 10;"
         );
     }
@@ -515,7 +526,8 @@ public class SSHConnection extends VBox {
     private VBox statChip(String label, Label valueLabel) {
         Label l = new Label(label);
         l.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px; -fx-font-weight: bold;");
-        valueLabel.setStyle("-fx-text-fill: " + ACCENT + "; -fx-font-size: 20px; -fx-font-weight: bold;");
+        valueLabel.setStyle("-fx-text-fill: " + Theme.colourDark + "; -fx-font-size: 20px; -fx-font-weight: bold;");
+        accentValueLabels.add(valueLabel);
         VBox box = new VBox(6, l, valueLabel);
         box.setPadding(new Insets(14, 18, 14, 18));
         box.setStyle(
@@ -530,7 +542,7 @@ public class SSHConnection extends VBox {
 
     private void stylePrimaryButton(Button button) {
         button.setStyle(
-                "-fx-background-color: " + ACCENT + ";" +
+                "-fx-background-color: " + Theme.colourDark + ";" +
                         "-fx-text-fill: #FFFFFF;" +
                         "-fx-font-weight: bold;" +
                         "-fx-font-size: 13px;" +
@@ -543,7 +555,7 @@ public class SSHConnection extends VBox {
     private void styleSecondaryAccentButton(Button button) {
         button.setStyle(
                 "-fx-background-color: " + ACCENT_BG + ";" +
-                        "-fx-text-fill: " + ACCENT + ";" +
+                        "-fx-text-fill: " + Theme.colourDark + ";" +
                         "-fx-font-weight: bold;" +
                         "-fx-font-size: 13px;" +
                         "-fx-background-radius: 8;" +
@@ -578,8 +590,7 @@ public class SSHConnection extends VBox {
     }
 
     // -------------------------------------------------------------------------
-    // Tunnel diagram: Laptop -> SSH Server -> MySQL, lights up as stages complete.
-    // Connector lines have a FIXED height so they never stretch into the labels.
+    // Tunnel diagram
     // -------------------------------------------------------------------------
 
     private static class TunnelDiagram extends HBox {
@@ -588,6 +599,7 @@ public class SSHConnection extends VBox {
         private final Circle dbDot     = dot();
         private final Region line1     = connector();
         private final Region line2     = connector();
+        private int lastStage = 0;
 
         TunnelDiagram() {
             setAlignment(Pos.CENTER);
@@ -630,11 +642,17 @@ public class SSHConnection extends VBox {
 
         /** stage: 0 = idle, 1 = ssh connected, 2 = port bound, 3 = jdbc connected (fully live). */
         void setStage(int stage) {
-            laptopDot.setFill(Color.web(ACCENT));
+            lastStage = stage;
+            laptopDot.setFill(Color.web(Theme.colourDark));
             sshDot.setFill(Color.web(stage >= 1 ? GREEN : LINE_OFF));
             dbDot.setFill(Color.web(stage >= 3 ? GREEN : LINE_OFF));
             line1.setStyle("-fx-background-color: " + (stage >= 1 ? GREEN : LINE_OFF) + ";");
             line2.setStyle("-fx-background-color: " + (stage >= 2 ? GREEN : LINE_OFF) + ";");
+        }
+
+        /** Re-applies the current stage's colours after a theme change, without altering progress. */
+        void refreshTheme() {
+            setStage(lastStage);
         }
     }
 }

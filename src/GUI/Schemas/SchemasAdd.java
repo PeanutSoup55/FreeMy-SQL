@@ -139,7 +139,7 @@ public class SchemasAdd extends BorderPane {
     private void applyTheme() {
         Platform.runLater(() -> {
             setStyle("-fx-background-color: white;");
-            topBar.setStyle("-fx-background-color: " + Theme.colour2 + ";" +
+            topBar.setStyle("-fx-background-color: " + Theme.colourDark + ";" +
                     "-fx-border-color: " + Theme.colourDark + "; -fx-border-width: 0 0 1 0;");
             title.setFill(Color.WHITE);
 

@@ -53,7 +53,7 @@ public class LoginGen extends VBox {
 
         Text title = new Text("Login Generator");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setStyle("-fx-fill: " + Theme.colour6 + ";");
+        title.setStyle("-fx-fill: " + Theme.colourDark + ";");
 
         HBox leftBox = new HBox(backBtn);
         leftBox.setAlignment(Pos.CENTER_LEFT);

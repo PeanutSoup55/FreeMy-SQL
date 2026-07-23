@@ -16,6 +16,8 @@ import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -26,6 +28,7 @@ import javafx.scene.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class Root extends BorderPane {
@@ -66,16 +69,19 @@ public class Root extends BorderPane {
         rail.setStyle("-fx-background-color: " + Theme.colour2 + ";");
 
         // Avatar at top
-        Text initialLabel = new Text(creds.getInitials());
-        initialLabel.setStyle("-fx-font-weight: bold; -fx-fill: white; -fx-font-size: 14;");
-        Rectangle rec = new Rectangle(36, 36);
-        rec.setArcWidth(8); rec.setArcHeight(8);
-        rec.setFill(Color.web("#000000"));
-        StackPane avatar = new StackPane(rec, initialLabel);
-        avatar.setPadding(new Insets(10, 0, 10, 0));
-        HBox avatarRow = new HBox(avatar);
+        Image image = new Image(
+                Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png"))
+        );
+
+        ImageView avatarImage = new ImageView(image);
+        avatarImage.setFitWidth(36);
+        avatarImage.setFitHeight(36);
+        avatarImage.setPreserveRatio(true);
+
+        HBox avatarRow = new HBox(avatarImage);
         avatarRow.setAlignment(Pos.CENTER);
         avatarRow.setPadding(new Insets(10, 0, 10, 0));
+
         rail.getChildren().add(avatarRow);
 
         for (int i = 0; i < LABELS.length; i++) {

@@ -21,7 +21,9 @@ public class Documentation extends BorderPane {
             SchemasDocs.CATEGORY,
             TablesDocs.CATEGORY,
             DataDocs.CATEGORY,
-            SshDocs.CATEGORY
+            SshDocs.CATEGORY,
+            ToolsDocs.CATEGORY,
+            SettingsAppDocs.CATEGORY
     );
 
     private String selectedCategory = CATEGORIES.get(0).key();
@@ -150,6 +152,7 @@ public class Documentation extends BorderPane {
     }
 
     private ImageView loadDocImage(String resourcePath) {
+        if (resourcePath == null) return null;
         var stream = getClass().getClassLoader().getResourceAsStream(resourcePath);
         if (stream == null) return null;
         return new ImageView(new Image(stream));

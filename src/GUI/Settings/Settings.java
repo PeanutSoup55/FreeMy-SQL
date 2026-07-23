@@ -5,17 +5,14 @@ import GUI.Settings.Documentation.Documentation;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-
-import java.util.Objects;
 
 public class Settings extends BorderPane {
 
     private final String[] LABELS = {"Account", "Theme", "Docs", "Give Feedback", "Version News"};
-    private final String[] ICONS = { "assets/account.png", "assets/theme.png", "assets/docs.png", "assets/feedback.png", "assets/version.png"};
+    private final String[] ICONS = { "assets/account.svg", "assets/theme.svg", "assets/docs.svg", "assets/feedback.svg", "assets/version.svg"};
     private VBox navBar;
     private Label title;
     private String activePage = "Account";
@@ -49,19 +46,19 @@ public class Settings extends BorderPane {
     }
 
     private HBox createNavItem(String label, String icon) {
-        ImageView iv = new ImageView(new Image(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(icon))));
-        iv.setFitWidth(16);
-        iv.setFitHeight(16);
+        boolean active = label.equals(activePage);
+        Group iconGroup = SvgIcon.load(icon, 16, active ? Theme.colour6 : Theme.colour7);
 
         Label item = new Label(label);
         item.setCursor(Cursor.HAND);
 
-        HBox nav = new HBox(10, iv, item);
+        HBox nav = new HBox(10, iconGroup, item);
         nav.setAlignment(Pos.CENTER_LEFT);
         nav.setPadding(new Insets(8, 10, 8, 10));
         nav.setMaxWidth(Double.MAX_VALUE);
         nav.setCursor(Cursor.HAND);
         nav.setUserData(label);
+        nav.getProperties().put("icon", icon);
 
         applyNavStyle(nav, item, label.equals(activePage));
 
@@ -98,6 +95,10 @@ public class Settings extends BorderPane {
         item.setStyle(active
                 ? "-fx-text-fill: " + Theme.colour6 + "; -fx-font-weight: bold;"
                 : "-fx-text-fill: " + Theme.colour7 + "; -fx-font-weight: normal;");
+
+        if (nav.getChildren().get(0) instanceof Group iconGroup && nav.getProperties().get("icon") instanceof String icon) {
+            SvgIcon.setContent(iconGroup, icon, 16, active ? Theme.colour6 : Theme.colour7);
+        }
     }
 
     // NEW: re-apply theme colours to already-built nav without rebuilding the whole tree
