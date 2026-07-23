@@ -1,5 +1,6 @@
 package GUI;
 
+import GUI.Settings.Theme;
 import globalfuncs.creds;
 import globalfuncs.db;
 import javafx.geometry.Insets;
@@ -65,12 +66,10 @@ public class Creds extends VBox {
     }
 
     private StackPane iconBadge(String glyph, String bg, String fg, double size) {
-        Circle circle = new Circle(size / 2);
-        circle.setFill(Color.web(bg));
-
-        Label glyphLabel = new Label(glyph);
-        glyphLabel.setFont(Font.font("System", size * 0.46));
-        glyphLabel.setTextFill(Color.web(fg));
+        Circle circle = new Circle(20);
+        circle.setFill(Color.web(Theme.colourDark).deriveColor(0,1,1,0.13)); // was ACCENT_BG
+        Label glyphLabel = new Label("\uD83D\uDD11");
+        glyphLabel.setTextFill(Color.web(Theme.colourDark));
 
         StackPane badge = new StackPane(circle, glyphLabel);
         badge.setMinSize(size, size);
@@ -169,7 +168,7 @@ public class Creds extends VBox {
         HBox.setHgrow(statusLabel, Priority.ALWAYS);
 
         save = new Button("Test & Save");
-        save.setStyle(primaryStyle(ACCENT));
+        save.setStyle(primaryStyle(Theme.colourDark));
         save.setOnMouseEntered(e -> save.setStyle(primaryStyle(ACCENT_DARK)));
         save.setOnMouseExited(e -> save.setStyle(primaryStyle(ACCENT)));
         save.setOnAction(e -> testAndSave());

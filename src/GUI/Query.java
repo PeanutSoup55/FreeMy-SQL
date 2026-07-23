@@ -1,5 +1,6 @@
 package GUI;
 
+import GUI.Settings.Theme;
 import globalfuncs.db;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -19,6 +20,9 @@ import java.util.List;
 
 public class Query extends VBox {
 
+    private static final String GREEN = "#2E5A47";
+    private static final String RED   = "#c0392b";
+
     private static final List<String> history = new ArrayList<>();
     private static int historyIndex = -1;
     private static String savedQuery = "";
@@ -28,33 +32,39 @@ public class Query extends VBox {
     private final Label statusLabel;
     private final ScrollPane histScroll;
 
+    // --- elements needing re-styling on theme change ---
+    private Text title;
+    private HBox header;
+    private Label editorLabel;
+    private Label histLabel;
+    private VBox editorCard;
+    private VBox outputCard;
+    private Label outputLabel;
+    private Button runBtn;
+    private Button clearBtn;
+    private Button histPrev;
+    private Button histNext;
+    private Button histClear;
+    private Label hint;
+    private String lastStatusMsg = "";
+    private boolean lastStatusError = false;
+
     public Query() {
         setSpacing(0);
-        setStyle("-fx-background-color: #F4F5F9");
 
-        Text title = new Text("SQL Query");
+        title = new Text("SQL Query");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
-        title.setFill(Color.web("#1C2333"));
 
-        HBox header = new HBox(title);
+        header = new HBox(title);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(20, 28, 16, 28));
-        header.setStyle("-fx-background-color: #F2F4F2;");
 
-        Label editorLabel = new Label("Query");
-        editorLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 11; -fx-font-weight: bold;");
+        editorLabel = new Label("Query");
 
         sqlInput = new TextArea();
         sqlInput.setPromptText("Write your SQL here...  (Ctrl+Enter to run)");
         sqlInput.setPrefRowCount(22);
         sqlInput.setText(savedQuery);
-        sqlInput.setStyle("-fx-font-family: 'Monospace';" +
-                "-fx-font-size: 13px;" +
-                "-fx-background-color: white;" +
-                "-fx-border-color: transparent;" +
-                "-fx-padding: 14;" +
-                "-fx-text-fill: #1E3D30;"
-        );
         sqlInput.textProperty().addListener((obs, oldVal, newVal) -> savedQuery = newVal);
         this.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.isControlDown() && e.getCode() == KeyCode.ENTER) { e.consume(); runQuery(); }
@@ -67,8 +77,7 @@ public class Query extends VBox {
         VBox.setVgrow(sqlInput, Priority.ALWAYS);
         HBox.setHgrow(inputCol, Priority.ALWAYS);
 
-        Label histLabel = new Label("History");
-        histLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 11; -fx-font-weight: bold;");
+        histLabel = new Label("History");
 
         historyList.setPadding(new Insets(4, 0, 4, 0));
         historyList.setStyle("-fx-background-color: transparent;");
@@ -94,36 +103,14 @@ public class Query extends VBox {
         HBox.setHgrow(histCol, Priority.ALWAYS);
         VBox.setVgrow(editorRow, Priority.ALWAYS);
 
-        VBox editorCard = new VBox(editorRow);
+        editorCard = new VBox(editorRow);
         editorCard.setSpacing(6);
         editorCard.setPadding(new Insets(16, 20, 16, 20));
-        editorCard.setStyle("-fx-background-color: white;" +
-                "-fx-background-radius: 12;" +
-                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.07), 14, 0, 0, 3);"
-        );
 
-        Button runBtn = new Button("▶  Run");
-        runBtn.setStyle("-fx-background-color: #1C2333;" +
-                "-fx-text-fill: white;" +
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" +
-                "-fx-cursor: hand;" +
-                "-fx-padding: 10 28;" +
-                "-fx-font-size: 13;"
-        );
+        runBtn = new Button("▶  Run");
         runBtn.setOnAction(e -> runQuery());
 
-        Button clearBtn = new Button("Clear Input/Output");
-        clearBtn.setStyle("-fx-background-color: white;" +
-                "-fx-text-fill: #1C2333;" +
-                "-fx-border-color: #1C2333;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;" +
-                "-fx-font-weight: bold;" +
-                "-fx-cursor: hand;" +
-                "-fx-padding: 10 28;" +
-                "-fx-font-size: 13;"
-        );
+        clearBtn = new Button("Clear Input/Output");
         clearBtn.setOnAction(e -> {
             sqlInput.clear();
             outputArea.clear();
@@ -131,41 +118,13 @@ public class Query extends VBox {
             setStatus("", false);
         });
 
-        Button histPrev = new Button("↓ Prev");
-        histPrev.setStyle("-fx-background-color: white;" +
-                "-fx-text-fill: #555;" +
-                "-fx-border-color: #CCCCCC;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;" +
-                "-fx-cursor: hand;" +
-                "-fx-padding: 10 16;" +
-                "-fx-font-size: 12;"
-        );
+        histPrev = new Button("↓ Prev");
         histPrev.setOnAction(e -> navigateHistory(-1));
 
-        Button histNext = new Button("↑ Next");
-        histNext.setStyle("-fx-background-color: white;" +
-                "-fx-text-fill: #555;" +
-                "-fx-border-color: #CCCCCC;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;" +
-                "-fx-cursor: hand;" +
-                "-fx-padding: 10 16;" +
-                "-fx-font-size: 12;"
-        );
+        histNext = new Button("↑ Next");
         histNext.setOnAction(e -> navigateHistory(1));
 
-        Button histClear = new Button("Clear History");
-        histClear.setStyle("-fx-background-color: white;" +
-                "-fx-text-fill: #1C2333;" +
-                "-fx-border-color: #3D6FE0;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;" +
-                "-fx-font-weight: bold;" +
-                "-fx-cursor: hand;" +
-                "-fx-padding: 10 28;" +
-                "-fx-font-size: 13;"
-        );
+        histClear = new Button("Clear History");
         histClear.setOnAction(e -> clearHist());
 
         statusLabel = new Label("");
@@ -177,32 +136,19 @@ public class Query extends VBox {
         HBox actionRow = new HBox(12, runBtn, clearBtn, histPrev, histNext, histClear, actionSpacer, statusLabel);
         actionRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label outputLabel = new Label("Output");
-        outputLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 11; -fx-font-weight: bold;");
+        outputLabel = new Label("Output");
 
         outputArea = new TextArea();
         outputArea.setEditable(false);
         outputArea.setPromptText("Results will appear here...");
-        outputArea.setStyle("-fx-font-family: 'Monospace';" +
-                "-fx-font-size: 12px;" +
-                "-fx-background-color: #FAFAFA;" +
-                "-fx-border-color: transparent;" +
-                "-fx-text-fill: #2C2C2C;" +
-                "-fx-padding: 14;"
-        );
         VBox.setVgrow(outputArea, Priority.ALWAYS);
 
-        VBox outputCard = new VBox(outputLabel, outputArea);
+        outputCard = new VBox(outputLabel, outputArea);
         outputCard.setSpacing(6);
         outputCard.setPadding(new Insets(16, 20, 16, 20));
-        outputCard.setStyle("-fx-background-color: white;" +
-                "-fx-background-radius: 12;" +
-                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.07), 14, 0, 0, 3);"
-        );
         VBox.setVgrow(outputCard, Priority.ALWAYS);
 
-        Label hint = new Label("Ctrl+Enter  run  ·  Ctrl+↑ / Ctrl+↓  history");
-        hint.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 11;");
+        hint = new Label("Ctrl+Enter  run  ·  Ctrl+↑ / Ctrl+↓  history");
         HBox hintBar = new HBox(hint);
         hintBar.setAlignment(Pos.CENTER_RIGHT);
         hintBar.setPadding(new Insets(0, 28, 0, 0));
@@ -214,6 +160,29 @@ public class Query extends VBox {
 
         getChildren().addAll(header, body);
         VBox.setVgrow(this, Priority.ALWAYS);
+
+        applyTheme();
+        Theme.registerThemeListener(this, this::applyTheme);
+    }
+
+    private void applyTheme() {
+        Platform.runLater(() -> {
+            runBtn.setStyle("-fx-background-color: " + Theme.colourDark + ";" +
+                    "-fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;" +
+                    "-fx-cursor: hand; -fx-padding: 10 28; -fx-font-size: 13;");
+
+            clearBtn.setStyle("-fx-background-color: white; -fx-text-fill: " + Theme.colourDark + ";" +
+                    "-fx-border-color: " + Theme.colourDark + "; -fx-border-radius: 8;" +
+                    "-fx-background-radius: 8; -fx-font-weight: bold; -fx-cursor: hand;" +
+                    "-fx-padding: 10 28; -fx-font-size: 13;");
+
+            histClear.setStyle("-fx-background-color: white; -fx-text-fill: " + Theme.colourDark + ";" +
+                    "-fx-border-color: " + Theme.colourDark + "; -fx-border-radius: 8;" +
+                    "-fx-background-radius: 8; -fx-font-weight: bold; -fx-cursor: hand;" +
+                    "-fx-padding: 10 28; -fx-font-size: 13;");
+
+            refreshHistoryPanel(); // history highlight uses colourDark too
+        });
     }
 
     private void runQuery() {
@@ -251,7 +220,7 @@ public class Query extends VBox {
 
         if (history.isEmpty()) {
             Label empty = new Label("No history yet.");
-            empty.setStyle("-fx-text-fill: #CCCCCC; -fx-font-size: 11; -fx-padding: 6 8;");
+            empty.setStyle("-fx-text-fill: " + Theme.colour3 + "; -fx-font-size: 11; -fx-padding: 6 8;");
             historyList.getChildren().add(empty);
             return;
         }
@@ -274,15 +243,15 @@ public class Query extends VBox {
             if (isCurrent) {
                 entry.setStyle("-fx-font-family: Monospace;" +
                         "-fx-font-size: 11;" +
-                        "-fx-text-fill: #1E3D30;" +
+                        "-fx-text-fill: " + Theme.colour6 + ";" +
                         "-fx-font-weight: bold;" +
-                        "-fx-background-color: #E8F0ED;" +
+                        "-fx-background-color: " + Theme.colourDark + "22;" +
                         "-fx-background-radius: 6;"
                 );
             } else {
                 entry.setStyle("-fx-font-family: Monospace;" +
                         "-fx-font-size: 11;" +
-                        "-fx-text-fill: #BBBBBB;" +
+                        "-fx-text-fill: " + Theme.colour7 + ";" +
                         "-fx-background-color: transparent;" +
                         "-fx-background-radius: 6;"
                 );
@@ -298,7 +267,7 @@ public class Query extends VBox {
             historyList.getChildren().add(entry);
         }
         Platform.runLater(() -> {
-            int activePos = history.size() - 1 - historyIndex; // inverted because newest is at top
+            int activePos = history.size() - 1 - historyIndex;
             if (activePos >= 0 && activePos < historyList.getChildren().size()) {
                 Node activeNode = historyList.getChildren().get(activePos);
                 histScroll.layout();
@@ -312,10 +281,11 @@ public class Query extends VBox {
     }
 
     private void setStatus(String msg, boolean isError) {
+        lastStatusMsg = msg;
+        lastStatusError = isError;
         statusLabel.setText(msg);
         statusLabel.setStyle("-fx-font-size: 12; -fx-font-weight: bold; -fx-text-fill: " +
-                (isError ? "#c0392b;" : "#2E5A47;")
+                (isError ? RED : GREEN) + ";"
         );
     }
-
 }

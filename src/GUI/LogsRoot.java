@@ -1,5 +1,6 @@
 package GUI;
 
+import GUI.Settings.Theme;
 import globalfuncs.db;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -60,10 +61,17 @@ public class LogsRoot extends BorderPane {
 
         Button refreshBtn = filledBtn();
         refreshBtn.setOnAction(e -> loadLogs());
-
+        refreshBtn.setStyle(
+                "-fx-background-color: " + Theme.colourDark + ";" +
+                        "-fx-text-fill: white; -fx-background-radius: 8; -fx-font-weight: bold;" +
+                        "-fx-cursor: hand; -fx-padding: 10 20; -fx-font-size: 13;");
         Button autoBtn = outlineBtn();
         autoBtn.setOnAction(e -> toggleAutoRefresh(autoBtn));
-
+        autoBtn.setStyle(
+                "-fx-background-color: #EAF0FD;" +
+                        "-fx-text-fill: " + Theme.colourDark + ";" +
+                        "-fx-background-radius: 8; -fx-font-weight: bold; -fx-cursor: hand;" +
+                        "-fx-padding: 10 20; -fx-font-size: 13;");
 
         Label typeLabel = smallLabel("Type");
         Label limitLabel = smallLabel("Limit");
@@ -201,9 +209,10 @@ public class LogsRoot extends BorderPane {
 
 
     private void styleTableHeaders() {
-        table.getStylesheets().add("data:text/css," +
+        String headerHex = Theme.colourDark.replace("#", "%23");
+        table.getStylesheets().setAll("data:text/css," +
                 ".table-view .column-header-background {" +
-                "   -fx-background-color: %231C2333;" +
+                "   -fx-background-color: " + headerHex + ";" +
                 "   -fx-background-radius: 10 10 0 0;" +
                 "}" +
                 ".table-view .column-header, .table-view .filler {" +
